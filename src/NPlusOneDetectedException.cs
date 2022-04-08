@@ -8,27 +8,22 @@ using System;
 namespace EfCoreNPlusOneGuard;
 
 /// <summary>
-/// Exception thrown when an N+1 query pattern is detected.
+/// The exception that is thrown when an N+1 query pattern is detected.
 /// </summary>
-public class NPlusOneDetectedException : Exception
+public sealed class NPlusOneDetectedException : InvalidOperationException
 {
     /// <summary>
-    /// The incident details.
+    /// Gets the incident details that caused this exception.
     /// </summary>
     public NPlusOneIncident Incident { get; }
 
     /// <summary>
-    /// Creates a new <see cref="NPlusOneDetectedException"/> instance.
+    /// Initializes a new instance of the <see cref="NPlusOneDetectedException"/> class.
     /// </summary>
-    /// <param name="incident">The incident details.</param>
+    /// <param name="incident">The incident details that caused this exception.</param>
     public NPlusOneDetectedException(NPlusOneIncident incident)
-        : base(CreateMessage(incident))
+        : base(incident.ToString())
     {
-        Incident = incident ?? throw new ArgumentNullException(nameof(incident));
-    }
-
-    private static string CreateMessage(NPlusOneIncident incident)
-    {
-        return $"N+1 query pattern detected. Query executed {incident.Count} times.";
+        Incident = incident;
     }
 }
