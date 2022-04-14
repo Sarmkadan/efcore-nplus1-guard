@@ -1,0 +1,4 @@
+## NPlusOneGuardOptions
+
+The `NPlusOneGuardOptions` class configures the behavior of the N+1 query detection. It allows you to set thresholds, define detection windows, control logging and exception throwing, and specify query patterns to ignore.
+
