@@ -4,16 +4,35 @@ using System.Linq;
 
 namespace EfCoreNPlusOneGuard
 {
+    /// <summary>
+    /// A detector for duplicate queries.
+    /// </summary>
+    /// <remarks>
+    /// This class tracks the frequency of queries and returns groups of queries that have been executed more than a specified threshold.
+    /// </remarks>
     public class DuplicateQueryDetector
     {
-        private readonly int _threshold;
-        private readonly Dictionary<(string sql, string? parameters), int> _queryCounts = new();
-
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuplicateQueryDetector"/> class.
+        /// </summary>
+        /// <param name="threshold">The minimum number of times a query must be executed to be considered a duplicate.</param>
         public DuplicateQueryDetector(int threshold = 2)
         {
             _threshold = threshold;
         }
 
+        private readonly int _threshold;
+
+        /// <summary>
+        /// A dictionary mapping query keys to their execution counts.
+        /// </summary>
+        private readonly Dictionary<(string sql, string? parameters), int> _queryCounts = new();
+
+        /// <summary>
+        /// Records a query execution.
+        /// </summary>
+        /// <param name="sql">The SQL query.</param>
+        /// <param name="parameters">The query parameters.</param>
         public void Record(string sql, string? parameters)
         {
             var key = (sql, parameters);
@@ -27,6 +46,10 @@ namespace EfCoreNPlusOneGuard
             }
         }
 
+        /// <summary>
+        /// Gets the groups of duplicate queries.
+        /// </summary>
+        /// <returns>A list of duplicate query groups.</returns>
         public IReadOnlyList<DuplicateQueryGroup> GetDuplicates()
         {
             return _queryCounts
@@ -40,15 +63,32 @@ namespace EfCoreNPlusOneGuard
                 .ToList();
         }
 
+        /// <summary>
+        /// Clears the query execution counts.
+        /// </summary>
         public void Clear()
         {
             _queryCounts.Clear();
         }
 
+        /// <summary>
+        /// A group of duplicate queries.
+        /// </summary>
         public class DuplicateQueryGroup
         {
+            /// <summary>
+            /// Gets the SQL query.
+            /// </summary>
             public string Sql { get; set; } = string.Empty;
+
+            /// <summary>
+            /// Gets the query parameters.
+            /// </summary>
             public string? Parameters { get; set; }
+
+            /// <summary>
+            /// Gets the number of times the query has been executed.
+            /// </summary>
             public int Count { get; set; }
         }
     }
