@@ -1,28 +1,96 @@
-// Copyright (c) 2023-present EF Core N+1 Guard contributors. All rights reserved.
-// Licensed under the MIT License. See LICENSE file in the project root for full license information.
-
-#nullable enable
-
-using System;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 
 namespace EfCoreNPlusOneGuard;
 
 /// <summary>
-/// Tracks query executions and detects N+1 patterns.
+/// Потокобезопасный класс для хранения скользящего окна выполненных запросов.
 /// </summary>
-internal class QueryTracker
+public sealed class QueryTracker
 {
+    private readonly ConcurrentDictionary<QueryFingerprint, ImmutableList<DateTimeOffset>> _queryTimestamps = new();
+    private readonly TimeSpan _detectionWindow;
+    private readonly int _threshold;
     private readonly NPlusOneGuardOptions _options;
-    private readonly Action<NPlusOneIncident>? _onDetected;
-    private readonly ConcurrentDictionary<string, int> _executionCounts = new();
 
-    public QueryTracker(NPlusOneGuardOptions options, Action<NPlusOneIncident>? onDetected = null)
+    /// <summary>
+    /// Инициализирует новый экземпляр класса QueryTracker.
+    /// </summary>
+    /// <param name="options">Параметры детекции N+1.</param>
+    public QueryTracker(NPlusOneGuardOptions options)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _onDetected = onDetected;
+        _detectionWindow = options.DetectionWindow;
+        _threshold = options.Threshold;
     }
 
+    /// <summary>
+    /// Регистрирует выполнение запроса и проверяет на наличие инцидента N+1.
+    /// </summary>
+    /// <param name="fp">Отпечаток запроса.</param>
+    /// <param name="options">Параметры детекции N+1.</param>
+    /// <returns>Инцидент N+1, если счётчик в окне превысил порог; иначе null.</returns>
+    public NPlusOneIncident? Record(QueryFingerprint fp, NPlusOneGuardOptions options)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        // Очистка устаревших записей за пределами DetectionWindow
+        CleanupOldRecords(now);
+
+        // Добавление текущего timestamp
+        var updatedTimestamps = _queryTimestamps.AddOrUpdate(
+            fp,
+            _ => ImmutableList.Create(now),
+            (_, existing) => existing.Add(now)
+        );
+
+        // Проверка на превышение порога
+        if (updatedTimestamps.Count >= options.Threshold)
+        {
+            var incident = new NPlusOneIncident
+            {
+                SqlQuery = fp.NormalizedSql,
+                Count = updatedTimestamps.Count,
+                Severity = NPlusOneSeverity.High,
+                StackTrace = Environment.StackTrace
+            };
+            return incident;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Сбрасывает все сохранённые записи.
+    /// </summary>
+    public void Reset()
+    {
+        _queryTimestamps.Clear();
+    }
+
+    private void CleanupOldRecords(DateTimeOffset now)
+    {
+        foreach (var key in _queryTimestamps.Keys.ToList())
+        {
+            var timestamps = _queryTimestamps[key];
+            var cutoff = now.Subtract(_detectionWindow);
+            var recentTimestamps = timestamps.Where(t => t >= cutoff).ToImmutableList();
+
+            if (recentTimestamps.IsEmpty)
+            {
+                _queryTimestamps.TryRemove(key, out _);
+            }
+            else if (recentTimestamps.Count != timestamps.Count)
+            {
+                _queryTimestamps[key] = recentTimestamps;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tracks query execution count (backward compatibility method).
+    /// </summary>
+    /// <param name="commandText">The SQL command text.</param>
     public void TrackExecution(string commandText)
     {
         if (commandText is null)
@@ -30,55 +98,21 @@ internal class QueryTracker
             throw new ArgumentNullException(nameof(commandText));
         }
 
-        _executionCounts.AddOrUpdate(commandText, 1, (_, count) => count + 1);
-        CheckForNPlusOnePattern();
-    }
+        var fp = QueryFingerprint.Create(commandText, "QueryTracker.TrackExecution");
+        var incident = Record(fp, _options);
 
-    private void CheckForNPlusOnePattern()
-    {
-        var threshold = _options.Threshold;
-
-        if (threshold <= 1)
+        if (incident != null)
         {
-            return;
-        }
-
-        foreach (var kvp in _executionCounts)
-        {
-            if (kvp.Value >= threshold)
+            if (_options.ThrowOnDetection)
             {
-                ReportIncident(kvp.Key, kvp.Value);
+                throw new NPlusOneDetectedException(incident);
+            }
+
+            if (_options.LogOnDetection)
+            {
+                Console.Error.WriteLine("[N+1 Guard] N+1 query pattern detected. Query executed " + incident.Count + " times.");
+                Console.Error.WriteLine("[N+1 Guard] SQL: " + commandText.Substring(0, Math.Min(100, commandText.Length)) + "...");
             }
         }
-    }
-
-    private void ReportIncident(string commandText, int executionCount)
-    {
-        var callStack = Environment.StackTrace;
-        var incident = new NPlusOneIncident
-        {
-            SqlQuery = commandText,
-            Count = executionCount,
-            Severity = NPlusOneSeverity.High,
-            StackTrace = callStack
-        };
-
-        if (_options.ThrowOnDetection)
-        {
-            throw new NPlusOneDetectedException(incident);
-        }
-
-        if (_options.LogOnDetection)
-        {
-            Console.Error.WriteLine($"[N+1 Guard] N+1 query pattern detected. Query executed {executionCount} times.");
-            Console.Error.WriteLine($"[N+1 Guard] SQL: {commandText.Substring(0, Math.Min(100, commandText.Length))}...");
-        }
-
-        _onDetected?.Invoke(incident);
-    }
-
-    public void Reset()
-    {
-        _executionCounts.Clear();
     }
 }
