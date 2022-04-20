@@ -22,6 +22,42 @@ var writer = new HtmlIncidentReportWriter();
 writer.WriteToFile(new[] { incident }, "nplus1-report.html");
 ```
 
+## DuplicateQueryDetector
+
+The `DuplicateQueryDetector` class monitors Entity Framework Core queries and identifies duplicate SQL queries that are executed repeatedly within a detection window. It helps detect N+1 query patterns and other query duplication issues by tracking query text, parameters, and occurrence counts.
+
+Here is an example of how to use `DuplicateQueryDetector`:
+
+```csharp
+// Create a detector with a 10-second detection window
+var detector = new DuplicateQueryDetector(TimeSpan.FromSeconds(10));
+
+// Record queries as they execute
+foreach (var query in executedQueries)
+{
+    detector.Record(query.Sql, query.Parameters);
+}
+
+// Check for duplicates after processing queries
+var duplicates = detector.GetDuplicates();
+
+if (duplicates.Any())
+{
+    Console.WriteLine($"Found {duplicates.Count} duplicate query groups:");
+    foreach (var group in duplicates)
+    {
+        Console.WriteLine($"  - {group.Count} occurrences of: {group.Sql}");
+        if (group.Parameters != null)
+        {
+            Console.WriteLine($"    Parameters: {group.Parameters}");
+        }
+    }
+}
+
+// Clear the detector for the next detection window
+detector.Clear();
+```
+
 ## QueryStatistics
 
 The `QueryStatistics` class is used to track and analyze the queries executed by the application. It provides a way to record query statistics, such as the number of queries executed, the total duration of the queries, and the SQL queries themselves.
