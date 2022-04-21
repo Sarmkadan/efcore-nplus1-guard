@@ -18,10 +18,12 @@ namespace EfCoreNPlusOneGuard
         /// <param name="statistics">The query statistics instance.</param>
         /// <param name="n">Maximum number of entries to return.</param>
         /// <returns>A read-only list of <see cref="QueryStatistics.QueryStatEntry"/> ordered by total duration.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="n"/> is negative.</exception>
         public static IReadOnlyList<QueryStatistics.QueryStatEntry> TopByDuration(this QueryStatistics statistics, int n)
         {
-            if (statistics is null) throw new ArgumentNullException(nameof(statistics));
-            if (n < 0) throw new ArgumentOutOfRangeException(nameof(n));
+            ArgumentNullException.ThrowIfNull(statistics);
+            ArgumentOutOfRangeException.ThrowIfNegative(n);
 
             return statistics.TopByCount(n)
                 .OrderByDescending(entry => entry.TotalDuration)
@@ -35,10 +37,12 @@ namespace EfCoreNPlusOneGuard
         /// <param name="statistics">The query statistics instance.</param>
         /// <param name="n">Maximum number of entries to return.</param>
         /// <returns>A read-only list of <see cref="QueryStatistics.QueryStatEntry"/> ordered by average duration.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="n"/> is negative.</exception>
         public static IReadOnlyList<QueryStatistics.QueryStatEntry> TopByAvgDuration(this QueryStatistics statistics, int n)
         {
-            if (statistics is null) throw new ArgumentNullException(nameof(statistics));
-            if (n < 0) throw new ArgumentOutOfRangeException(nameof(n));
+            ArgumentNullException.ThrowIfNull(statistics);
+            ArgumentOutOfRangeException.ThrowIfNegative(n);
 
             return statistics.TopByCount(n)
                 .OrderByDescending(entry => entry.AvgDuration)
@@ -52,9 +56,10 @@ namespace EfCoreNPlusOneGuard
         /// <param name="statistics">The query statistics instance.</param>
         /// <param name="threshold">The minimum average duration threshold.</param>
         /// <returns>A read-only list of <see cref="QueryStatistics.QueryStatEntry"/> that exceed the threshold.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
         public static IReadOnlyList<QueryStatistics.QueryStatEntry> WhereAvgDurationExceeds(this QueryStatistics statistics, TimeSpan threshold)
         {
-            if (statistics is null) throw new ArgumentNullException(nameof(statistics));
+            ArgumentNullException.ThrowIfNull(statistics);
 
             return statistics.TopByCount(int.MaxValue)
                 .Where(entry => entry.AvgDuration > threshold)
@@ -68,14 +73,15 @@ namespace EfCoreNPlusOneGuard
         /// <param name="statistics">The query statistics instance.</param>
         /// <param name="includeTopQueries">Whether to include top queries in the summary.</param>
         /// <returns>A formatted string containing statistics summary.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
         public static string ToSummaryString(this QueryStatistics statistics, bool includeTopQueries = true)
         {
-            if (statistics is null) throw new ArgumentNullException(nameof(statistics));
+            ArgumentNullException.ThrowIfNull(statistics);
 
             var lines = new List<string>
             {
-                $"Query Statistics Summary:",
-                $"-------------------------",
+                "Query Statistics Summary:",
+                "-------------------------",
                 $"Total Queries: {statistics.TotalQueries}",
                 $"Unique Queries: {statistics.UniqueQueries}",
                 $"Total Duration: {statistics.TotalDuration.TotalMilliseconds:F2} ms",
@@ -91,8 +97,8 @@ namespace EfCoreNPlusOneGuard
                 var topByCount = statistics.TopByCount(5);
                 foreach (var entry in topByCount)
                 {
-                    lines.Add($"  {entry.Count,6} executions - {entry.TotalDuration.TotalMilliseconds,8:F2} ms total - {entry.AvgDuration.TotalMilliseconds,8:F2} ms avg");
-                    lines.Add($"    {entry.Sql.Substring(0, Math.Min(entry.Sql.Length, 80))}...");
+                    lines.Add($" {entry.Count,6} executions - {entry.TotalDuration.TotalMilliseconds,8:F2} ms total - {entry.AvgDuration.TotalMilliseconds,8:F2} ms avg");
+                    lines.Add($" {entry.Sql.Substring(0, Math.Min(entry.Sql.Length, 80))}...");
                 }
             }
 
