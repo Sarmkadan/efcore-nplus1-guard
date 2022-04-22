@@ -14,22 +14,18 @@ namespace EfCoreNPlusOneGuard
         /// </summary>
         /// <param name="value">The fingerprint to validate.</param>
         /// <returns>An empty list if valid; otherwise, a list of validation error messages.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
         public static IReadOnlyList<string> Validate(this QueryFingerprint? value)
         {
-            var errors = new List<string>();
+            ArgumentNullException.ThrowIfNull(value);
 
-            if (value is null)
-            {
-                errors.Add("QueryFingerprint cannot be null.");
-                return errors;
-            }
+            var errors = new List<string>();
 
             if (string.IsNullOrWhiteSpace(value.CommandTextHash))
             {
                 errors.Add("CommandTextHash cannot be null or whitespace.");
             }
-
-            if (value.CommandTextHash is not null && value.CommandTextHash.Length != 64)
+            else if (value.CommandTextHash.Length != 64)
             {
                 errors.Add("CommandTextHash must be a 64-character SHA256 hash.");
             }
@@ -52,22 +48,18 @@ namespace EfCoreNPlusOneGuard
         /// </summary>
         /// <param name="value">The fingerprint to check.</param>
         /// <returns>True if valid; otherwise, false.</returns>
-        public static bool IsValid(this QueryFingerprint? value)
-        {
-            return Validate(value).Count == 0;
-        }
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
+        public static bool IsValid(this QueryFingerprint? value) => Validate(value).Count == 0;
 
         /// <summary>
-        /// Ensures that the specified <see cref="QueryFingerprint"/> is valid, throwing an <see cref="ArgumentException"/> if it is not.
+        /// Ensures that the specified <see cref="QueryFingerprint"/> is valid, throwing an <see cref="ArgumentNullException"/> if it is null or an <see cref="ArgumentException"/> if it is invalid.
         /// </summary>
         /// <param name="value">The fingerprint to validate.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentException">Thrown when the fingerprint is invalid.</exception>
         public static void EnsureValid(this QueryFingerprint? value)
         {
-            if (value is null)
-            {
-                throw new ArgumentException("QueryFingerprint cannot be null.");
-            }
+            ArgumentNullException.ThrowIfNull(value);
 
             var errors = Validate(value);
             if (errors.Count > 0)
