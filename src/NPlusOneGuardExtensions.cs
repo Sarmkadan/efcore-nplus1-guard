@@ -20,15 +20,13 @@ public static class NPlusOneGuardExtensions
     /// <param name="configure">Optional action to configure NPlusOneGuardOptions.</param>
     /// <param name="onDetected">Optional callback invoked when N+1 query is detected.</param>
     /// <returns>The configured DbContextOptionsBuilder.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="builder"/> is <see langword="null"/>.</exception>
     public static DbContextOptionsBuilder UseNPlusOneGuard(
         this DbContextOptionsBuilder builder,
         Action<NPlusOneGuardOptions>? configure = null,
         Action<NPlusOneIncident>? onDetected = null)
     {
-        if (builder is null)
-        {
-            throw new ArgumentNullException(nameof(builder));
-        }
+        ArgumentNullException.ThrowIfNull(builder);
 
         var options = new NPlusOneGuardOptions();
         configure?.Invoke(options);
