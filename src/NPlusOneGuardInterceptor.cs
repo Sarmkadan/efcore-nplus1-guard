@@ -1,28 +1,15 @@
-// Copyright (c) 2023-present EF Core N+1 Guard contributors. All rights reserved.
-// Licensed under the MIT License. See LICENSE file in the project root for full license information.
-
-#nullable enable
-
-using System;
-using System.Data.Common;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using System.Data.Common;
 
 namespace EfCoreNPlusOneGuard;
 
-/// <summary>
-/// EF Core interceptor that detects N+1 query patterns.
-/// </summary>
-internal class NPlusOneGuardInterceptor : DbCommandInterceptor
+public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
 {
     private readonly NPlusOneGuardOptions _options;
     private readonly Action<NPlusOneIncident>? _onDetected;
     private readonly QueryTracker _tracker;
 
-    public NPlusOneGuardInterceptor(
-        NPlusOneGuardOptions options,
-        Action<NPlusOneIncident>? onDetected = null)
+    public NPlusOneGuardInterceptor(NPlusOneGuardOptions options, Action<NPlusOneIncident>? onDetected = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _onDetected = onDetected;
@@ -34,43 +21,45 @@ internal class NPlusOneGuardInterceptor : DbCommandInterceptor
         CommandEventData eventData,
         InterceptionResult<DbDataReader> result)
     {
-        if (command is null)
+        if (command == null)
         {
             throw new ArgumentNullException(nameof(command));
         }
 
-        if (eventData is null)
+        if (eventData == null)
         {
             throw new ArgumentNullException(nameof(eventData));
         }
 
         TrackQuery(command.CommandText);
+
         return base.ReaderExecuting(command, eventData, result);
     }
 
-    public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+    public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
         DbCommand command,
         CommandEventData eventData,
         InterceptionResult<DbDataReader> result,
         CancellationToken cancellationToken = default)
     {
-        if (command is null)
+        if (command == null)
         {
             throw new ArgumentNullException(nameof(command));
         }
 
-        if (eventData is null)
+        if (eventData == null)
         {
             throw new ArgumentNullException(nameof(eventData));
         }
 
-        TrackQuery(command.CommandText);
-        return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        await TrackQueryAsync(command.CommandText, cancellationToken).ConfigureAwait(false);
+
+        return await base.ReaderExecutingAsync(command, eventData, result, cancellationToken).ConfigureAwait(false);
     }
 
     private void TrackQuery(string commandText)
     {
-        if (commandText is null)
+        if (commandText == null)
         {
             throw new ArgumentNullException(nameof(commandText));
         }
@@ -84,5 +73,25 @@ internal class NPlusOneGuardInterceptor : DbCommandInterceptor
         }
 
         _tracker.TrackExecution(commandText);
+    }
+
+    private async ValueTask TrackQueryAsync(string commandText, CancellationToken cancellationToken)
+    {
+        if (commandText == null)
+        {
+            throw new ArgumentNullException(nameof(commandText));
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        foreach (var pattern in _options.IgnoredQueryPatterns)
+        {
+            if (commandText.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+        }
+
+        await Task.Run(() => _tracker.TrackExecution(commandText), cancellationToken).ConfigureAwait(false);
     }
 }
