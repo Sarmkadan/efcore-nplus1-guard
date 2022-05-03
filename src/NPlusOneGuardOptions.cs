@@ -3,18 +3,9 @@
 
 #nullable enable
 using System;
+using System.Collections.Generic;
 
-namespace EfCoreNPlusOneGuard
-{
-    public class NPlusOneGuardOptions
-    {
-        public int Threshold { get; set; } = 5;
-        public TimeSpan DetectionWindow { get; set; } = TimeSpan.FromSeconds(2);
-        public bool ThrowOnDetection { get; set; } = false;
-        public bool LogOnDetection { get; set; } = true;
-        public List<string> IgnoredQueryPatterns { get; set; } = new List<string>();
-    }
-}
+namespace EfCoreNPlusOneGuard;
 
 /// <summary>
 /// Options for the N+1 Guard.

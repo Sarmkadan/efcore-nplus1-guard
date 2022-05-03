@@ -72,10 +72,10 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
             }
         }
 
-        _tracker.TrackExecution(commandText);
+        _tracker.TrackExecution(commandText, _onDetected);
     }
 
-    private async ValueTask TrackQueryAsync(string commandText, CancellationToken cancellationToken)
+    private ValueTask TrackQueryAsync(string commandText, CancellationToken cancellationToken)
     {
         if (commandText == null)
         {
@@ -88,10 +88,11 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
         {
             if (commandText.Contains(pattern, StringComparison.OrdinalIgnoreCase))
             {
-                return;
+                return ValueTask.CompletedTask;
             }
         }
 
-        await Task.Run(() => _tracker.TrackExecution(commandText), cancellationToken).ConfigureAwait(false);
+        _tracker.TrackExecution(commandText, _onDetected);
+        return ValueTask.CompletedTask;
     }
 }

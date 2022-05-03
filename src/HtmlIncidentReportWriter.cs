@@ -70,8 +70,12 @@ public class HtmlIncidentReportWriter
 	/// <param name="incidents">The list of N+1 incidents to include in the report.</param>
 	/// <param name="title">The title for the HTML report. Defaults to "N+1 Report".</param>
 	/// <returns>A complete HTML document as a string containing formatted incident data.</returns>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="incidents"/> or <paramref name="title"/> is <see langword="null"/>.</exception>
 	public string Generate(IReadOnlyList<NPlusOneIncident> incidents, string title = "N+1 Report")
 	{
+		ArgumentNullException.ThrowIfNull(incidents);
+		ArgumentNullException.ThrowIfNull(title);
+
 		var sb = new StringBuilder();
 
 		// HTML header
@@ -240,8 +244,12 @@ public class HtmlIncidentReportWriter
 	/// </summary>
 	/// <param name="incidents">The list of N+1 incidents to include in the report.</param>
 	/// <param name="path">The file system path where the HTML report should be saved.</param>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="incidents"/> or <paramref name="path"/> is <see langword="null"/>.</exception>
+	/// <exception cref="ArgumentException">Thrown when <paramref name="path"/> is empty or whitespace.</exception>
 	public void WriteToFile(IReadOnlyList<NPlusOneIncident> incidents, string path)
 	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
 		var html = Generate(incidents);
 		System.IO.File.WriteAllText(path, html);
 	}

@@ -1,4 +1,0 @@
-
-This will allow the `GetAll` method on `MyDbContext.MyEntity` to execute, as well as any methods that start with `Get` on the same type.
-
-> v0.1 in progress.

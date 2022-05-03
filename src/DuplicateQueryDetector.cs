@@ -33,8 +33,11 @@ namespace EfCoreNPlusOneGuard
         /// </summary>
         /// <param name="sql">The SQL query.</param>
         /// <param name="parameters">The query parameters.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="sql"/> is null, empty, or whitespace.</exception>
         public void Record(string sql, string? parameters)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(sql);
+
             var key = (sql, parameters);
             if (_queryCounts.TryGetValue(key, out int count))
             {

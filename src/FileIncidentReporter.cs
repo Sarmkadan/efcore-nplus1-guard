@@ -13,12 +13,17 @@ public sealed class FileIncidentReporter
     private readonly string _filePath;
     private readonly bool _append;
     private readonly object _lock = new object();
+    private bool _fileInitialized;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FileIncidentReporter"/> class.
     /// </summary>
     /// <param name="filePath">The path to the log file.</param>
-    /// <param name="append">Whether to append to the file if it exists (default: true).</param>
+    /// <param name="append">
+    /// When <see langword="true"/> (default), existing content in the file is preserved and new
+    /// entries are appended. When <see langword="false"/>, the file is truncated the first time
+    /// this instance writes to it, then subsequent writes append.
+    /// </param>
     public FileIncidentReporter(string filePath, bool append = true)
     {
         _filePath = filePath ?? throw new ArgumentNullException(nameof(filePath));
@@ -40,7 +45,7 @@ public sealed class FileIncidentReporter
 
         lock (_lock)
         {
-            File.AppendAllText(_filePath, line + Environment.NewLine, _append ? System.Text.Encoding.UTF8 : new System.Text.UTF8Encoding(false));
+            WriteLines(new[] { line });
         }
     }
 
@@ -71,13 +76,36 @@ public sealed class FileIncidentReporter
 
         lock (_lock)
         {
-            File.AppendAllLines(_filePath, lines, _append ? System.Text.Encoding.UTF8 : new System.Text.UTF8Encoding(false));
+            WriteLines(lines);
         }
+    }
+
+    /// <summary>
+    /// Writes the given lines to the log file, honoring the <c>append</c> setting: when
+    /// <see langword="false"/>, the file is truncated on the first write of this instance's
+    /// lifetime and subsequently appended to; when <see langword="true"/>, existing content
+    /// is always preserved. Must be called while holding <see cref="_lock"/>.
+    /// </summary>
+    private void WriteLines(IReadOnlyCollection<string> lines)
+    {
+        var truncate = !_append && !_fileInitialized;
+        var encoding = new System.Text.UTF8Encoding(false);
+
+        if (truncate)
+        {
+            File.WriteAllLines(_filePath, lines, encoding);
+        }
+        else
+        {
+            File.AppendAllLines(_filePath, lines, encoding);
+        }
+
+        _fileInitialized = true;
     }
 
     private static string FormatIncident(NPlusOneIncident incident)
     {
-        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
         var fingerprint = incident.SqlQuery ?? string.Empty;
         var count = incident.Count;
         var stackTopFrame = incident.StackTrace?.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;

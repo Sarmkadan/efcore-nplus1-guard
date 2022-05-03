@@ -91,7 +91,10 @@ public sealed class QueryTracker
     /// Tracks query execution count (backward compatibility method).
     /// </summary>
     /// <param name="commandText">The SQL command text.</param>
-    public void TrackExecution(string commandText)
+    /// <param name="onDetected">Optional callback invoked when an N+1 incident is detected.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="commandText"/> is <see langword="null"/>.</exception>
+    /// <exception cref="NPlusOneDetectedException">Thrown when an incident is detected and <see cref="NPlusOneGuardOptions.ThrowOnDetection"/> is <see langword="true"/>.</exception>
+    public void TrackExecution(string commandText, Action<NPlusOneIncident>? onDetected = null)
     {
         if (commandText is null)
         {
@@ -103,15 +106,17 @@ public sealed class QueryTracker
 
         if (incident != null)
         {
-            if (_options.ThrowOnDetection)
-            {
-                throw new NPlusOneDetectedException(incident);
-            }
+            onDetected?.Invoke(incident);
 
             if (_options.LogOnDetection)
             {
                 Console.Error.WriteLine("[N+1 Guard] N+1 query pattern detected. Query executed " + incident.Count + " times.");
                 Console.Error.WriteLine("[N+1 Guard] SQL: " + commandText.Substring(0, Math.Min(100, commandText.Length)) + "...");
+            }
+
+            if (_options.ThrowOnDetection)
+            {
+                throw new NPlusOneDetectedException(incident);
             }
         }
     }
