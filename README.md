@@ -1,4 +1,30 @@
-var options = new NPlusOneGuardOptions { Threshold = 5, DetectionWindow = TimeSpan.FromSeconds(10), ThrowOnDetection = true, LogOnDetection = true, IgnoredQueryPatterns = new List<string> { "SELECT * FROM __EFMigrationsHistory" } };
+# EfCoreNPlusOneGuard
+
+Detects EF Core N+1 query patterns at runtime. One line in your `DbContext` setup:
+
+```csharp
+optionsBuilder.UseNPlusOneGuard();
+```
+
+Or with options and a detection callback:
+
+```csharp
+optionsBuilder.UseNPlusOneGuard(
+    o =>
+    {
+        o.Threshold = 5;
+        o.DetectionWindow = TimeSpan.FromSeconds(10);
+        o.ThrowOnDetection = true;
+        o.LogOnDetection = true;
+        o.IgnoredQueryPatterns.Add("__EFMigrationsHistory");
+    },
+    incident => Console.WriteLine($"N+1: {incident.SqlQuery} x{incident.Count}"));
+```
+
+## Architecture
+
+How the interceptor -> fingerprint -> sliding-window pipeline works, why it is built
+that way, and where to extend it: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## NPlusOneIncident
 
