@@ -5,7 +5,7 @@ namespace EfCoreNPlusOneGuard;
 /// <summary>
 /// Reports N+1 query incidents to a JSON Lines file.
 /// </summary>
-internal sealed class JsonIncidentReporter
+public sealed class JsonIncidentReporter : IIncidentReporter
 {
     private readonly string _filePath;
     private readonly object _lock = new();

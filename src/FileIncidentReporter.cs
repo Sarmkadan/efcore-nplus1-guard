@@ -8,7 +8,7 @@ namespace EfCoreNPlusOneGuard;
 /// <summary>
 /// Reports N+1 incidents to a text log file.
 /// </summary>
-public sealed class FileIncidentReporter
+public sealed class FileIncidentReporter : IIncidentReporter
 {
     private readonly string _filePath;
     private readonly bool _append;
