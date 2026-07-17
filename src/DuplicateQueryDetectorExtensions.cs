@@ -34,7 +34,7 @@ namespace EfCoreNPlusOneGuard
         {
             ArgumentNullException.ThrowIfNull(detector);
 
-            return detector.GetDuplicates().Count > 0;
+            return detector.GetDuplicates().Any();
         }
 
         /// <summary>
@@ -46,7 +46,6 @@ namespace EfCoreNPlusOneGuard
         public static int GetTotalDuplicateCount(this DuplicateQueryDetector detector)
         {
             ArgumentNullException.ThrowIfNull(detector);
-
             return detector.GetDuplicates().Sum(d => d.Count);
         }
     }
