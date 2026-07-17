@@ -13,12 +13,20 @@ namespace EfCoreNPlusOneGuard
         /// Validates a <see cref="QueryStatistics"/> instance.
         /// </summary>
         /// <param name="value">The query statistics instance to validate.</param>
-        /// <returns>An empty list as <see cref="QueryStatistics"/> maintains valid internal state.</returns>
+        /// <returns>An empty list if the statistics are valid; otherwise, a list of validation error messages.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
         public static IReadOnlyList<string> Validate(this QueryStatistics? value)
         {
             ArgumentNullException.ThrowIfNull(value);
-            return new List<string>();
+            var errors = new List<string>();
+
+    // QueryStatistics itself maintains valid internal state, so we only need to validate entries
+    foreach (var entry in value.TopByCount(int.MaxValue))
+    {
+        errors.AddRange(entry.Validate());
+    }
+
+    return errors;
         }
 
         /// <summary>
@@ -27,7 +35,7 @@ namespace EfCoreNPlusOneGuard
         /// <param name="value">The query statistics instance to check.</param>
         /// <returns><see langword="true"/> if valid; otherwise, <see langword="false"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
-        public static bool IsValid(this QueryStatistics? value) => value != null;
+        public static bool IsValid(this QueryStatistics? value) => value != null && Validate(value).Count == 0;
 
         /// <summary>
         /// Ensures that the specified <see cref="QueryStatistics"/> is valid, throwing an <see cref="ArgumentNullException"/> if it is null.
@@ -72,7 +80,7 @@ namespace EfCoreNPlusOneGuard
         /// <param name="value">The query stat entry to check.</param>
         /// <returns><see langword="true"/> if valid; otherwise, <see langword="false"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
-        public static bool IsValid(this QueryStatistics.QueryStatEntry? value) => Validate(value).Count == 0;
+        public static bool IsValid(this QueryStatistics.QueryStatEntry? value) => value != null && Validate(value).Count == 0;
 
         /// <summary>
         /// Ensures that the specified <see cref="QueryStatistics.QueryStatEntry"/> is valid, throwing an <see cref="ArgumentNullException"/> if it is null or an <see cref="ArgumentException"/> if it is invalid.
