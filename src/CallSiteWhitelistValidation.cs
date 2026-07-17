@@ -1,5 +1,4 @@
 #nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -23,10 +22,80 @@ namespace EfCoreNPlusOneGuard
 
             var problems = new List<string>();
 
-            // No validation needed for Count, IsWhitelisted, Clear as they don't have invariants
-            // ExactEntry and PatternEntry are private implementation details with no public validation surface
+            // Use reflection to access the private _entries field
+            var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (entriesField == null)
+            {
+                problems.Add("Could not access internal entries collection of CallSiteWhitelist.");
+                return problems.AsReadOnly();
+            }
+
+            var entries = entriesField.GetValue(value) as System.Collections.IList;
+            if (entries == null)
+            {
+                problems.Add("Internal entries collection is null.");
+                return problems.AsReadOnly();
+            }
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                if (entry == null)
+                {
+                    problems.Add($"Entry at index {i} is null.");
+                    continue;
+                }
+
+                var entryType = entry.GetType();
+                if (entryType.Name == "ExactEntry")
+                {
+                    ValidateExactEntry(entry, i, problems);
+                }
+                else if (entryType.Name == "PatternEntry")
+                {
+                    ValidatePatternEntry(entry, i, problems);
+                }
+                else
+                {
+                    problems.Add($"Entry at index {i} has unknown type '{entryType.Name}'.");
+                }
+            }
 
             return problems.AsReadOnly();
+        }
+
+        private static void ValidateExactEntry(object entry, int index, List<string> problems)
+        {
+            var typeName = entry.GetType().GetProperty("TypeName")?.GetValue(entry) as string;
+            var methodName = entry.GetType().GetProperty("MethodName")?.GetValue(entry) as string;
+
+            if (string.IsNullOrWhiteSpace(typeName))
+            {
+                problems.Add($"ExactEntry at index {index} has null or whitespace TypeName.");
+            }
+
+            // MethodName can be null, but if not null it should not be whitespace
+            if (methodName != null && string.IsNullOrWhiteSpace(methodName))
+            {
+                problems.Add($"ExactEntry at index {index} has whitespace MethodName.");
+            }
+        }
+
+        private static void ValidatePatternEntry(object entry, int index, List<string> problems)
+        {
+            var pattern = entry.GetType().GetProperty("Pattern")?.GetValue(entry) as string;
+            var regex = entry.GetType().GetProperty("Regex")?.GetValue(entry);
+
+            if (string.IsNullOrWhiteSpace(pattern))
+            {
+                problems.Add($"PatternEntry at index {index} has null or whitespace Pattern.");
+            }
+
+            if (regex == null)
+            {
+                problems.Add($"PatternEntry at index {index} has null Regex.");
+            }
         }
 
         /// <summary>
