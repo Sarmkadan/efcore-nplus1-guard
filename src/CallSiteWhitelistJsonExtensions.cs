@@ -68,8 +68,23 @@ namespace EfCoreNPlusOneGuard
 
     internal sealed class CallSiteWhitelistConverter : JsonConverter<CallSiteWhitelist>
     {
+        /// <summary>
+        /// Converts between <see cref="CallSiteWhitelist"/> and JSON representation.
+        /// </summary>
+        public CallSiteWhitelistConverter()
+        {
+        }
+
         private static readonly FieldInfo? EntriesField = typeof(CallSiteWhitelist).GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic);
 
+        /// <summary>
+        /// Reads and converts the JSON to a <see cref="CallSiteWhitelist"/>.
+        /// </summary>
+        /// <param name="reader">The reader to read from.</param>
+        /// <param name="typeToConvert">The type to convert.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The deserialized whitelist.</returns>
+        /// <exception cref="JsonException">Thrown when JSON parsing fails or required properties are missing.</exception>
         public override CallSiteWhitelist? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             var whitelist = new CallSiteWhitelist();
@@ -80,23 +95,42 @@ namespace EfCoreNPlusOneGuard
                     var type = element.GetProperty("type").GetString();
                     if (type == "exact")
                     {
-                        var typeName = element.GetProperty("typeName").GetString()!;
+                        var typeName = element.GetProperty("typeName").GetString();
+                        if (typeName == null)
+                            throw new JsonException("Missing required property 'typeName' for exact entry.");
+
                         var methodName = element.TryGetProperty("methodName", out var mn) ? mn.GetString() : null;
                         whitelist.Add(typeName, methodName);
                     }
                     else if (type == "pattern")
                     {
-                        var pattern = element.GetProperty("pattern").GetString()!;
+                        var pattern = element.GetProperty("pattern").GetString();
+                        if (pattern == null)
+                            throw new JsonException("Missing required property 'pattern' for pattern entry.");
+
                         whitelist.AddPattern(pattern);
+                    }
+                    else
+                    {
+                        throw new JsonException($"Unknown entry type '{type}'. Expected 'exact' or 'pattern'.");
                     }
                 }
             }
             return whitelist;
         }
 
+        /// <summary>
+        /// Writes the <see cref="CallSiteWhitelist"/> to JSON.
+        /// </summary>
+        /// <param name="writer">The writer to write to.</param>
+        /// <param name="value">The value to serialize.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <exception cref="InvalidOperationException">Thrown when the internal _entries field cannot be found.</exception>
         public override void Write(Utf8JsonWriter writer, CallSiteWhitelist value, JsonSerializerOptions options)
         {
-            if (EntriesField == null) throw new InvalidOperationException("Could not find _entries field.");
+            if (EntriesField == null)
+                throw new InvalidOperationException("Could not find _entries field in CallSiteWhitelist.");
+
             var entries = (List<object>)EntriesField.GetValue(value)!;
 
             writer.WriteStartArray();
@@ -110,7 +144,8 @@ namespace EfCoreNPlusOneGuard
                     writer.WriteStartObject();
                     writer.WriteString("type", "exact");
                     writer.WriteString("typeName", typeName);
-                    if (methodName != null) writer.WriteString("methodName", methodName);
+                    if (methodName != null)
+                        writer.WriteString("methodName", methodName);
                     writer.WriteEndObject();
                 }
                 else if (entryType.Name == "PatternEntry")
