@@ -13,7 +13,15 @@ public static class QueryTrackerExtensions
     /// </summary>
     /// <param name="tracker">The <see cref="QueryTracker"/> instance.</param>
     /// <param name="sqlCommands">The collection of SQL commands to track.</param>
-    /// <exception cref="ArgumentNullException">Thrown when tracker or sqlCommands is null.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="tracker"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="sqlCommands"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="sqlCommands"/> contains a <see langword="null"/> element.
+    /// </exception>
     public static void TrackBatch(this QueryTracker tracker, IEnumerable<string> sqlCommands)
     {
         ArgumentNullException.ThrowIfNull(tracker);
@@ -21,6 +29,7 @@ public static class QueryTrackerExtensions
 
         foreach (var sql in sqlCommands)
         {
+            ArgumentNullException.ThrowIfNull(sql);
             tracker.TrackExecution(sql);
         }
     }
@@ -30,7 +39,9 @@ public static class QueryTrackerExtensions
     /// </summary>
     /// <param name="tracker">The <see cref="QueryTracker"/> instance.</param>
     /// <returns>The original tracker instance.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when tracker is null.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="tracker"/> is <see langword="null"/>.
+    /// </exception>
     public static QueryTracker ResetAndReturn(this QueryTracker tracker)
     {
         ArgumentNullException.ThrowIfNull(tracker);
@@ -43,7 +54,9 @@ public static class QueryTrackerExtensions
     /// </summary>
     /// <param name="tracker">The <see cref="QueryTracker"/> instance.</param>
     /// <param name="commandText">The SQL command text.</param>
-    /// <exception cref="ArgumentNullException">Thrown when tracker is null.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="tracker"/> is <see langword="null"/>.
+    /// </exception>
     public static void TrackExecutionSafe(this QueryTracker tracker, string? commandText)
     {
         ArgumentNullException.ThrowIfNull(tracker);
