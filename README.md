@@ -76,6 +76,69 @@ Top fingerprints by occurrence:
 aggregator.Clear();
 ```
 
+## QueryStatisticsValidation
+
+The `QueryStatisticsValidation` static class provides validation helpers for `QueryStatistics` and its nested `QueryStatistics.QueryStatEntry` instances. It offers methods to validate query statistics, check validity, and ensure validity with appropriate exception throwing.
+
+Example usage:
+
+```csharp
+using System;
+using EfCoreNPlusOneGuard;
+
+
+// Create query statistics with some entries
+var stats = new QueryStatistics();
+stats.Add("SELECT * FROM Users WHERE Id = @id", 10, TimeSpan.FromMilliseconds(150));
+stats.Add("SELECT * FROM Orders WHERE CustomerId = @customerId", 5, TimeSpan.FromMilliseconds(80));
+
+// Validate the statistics
+var validationErrors = stats.Validate();
+if (validationErrors.Count > 0)
+{
+    Console.WriteLine("Validation errors found:");
+    foreach (var error in validationErrors)
+    {
+        Console.WriteLine($"- {error}");
+    }
+}
+else
+{
+    Console.WriteLine("Query statistics are valid!");
+}
+
+// Check if valid
+bool isValid = stats.IsValid();
+Console.WriteLine($"Is valid: {isValid}");
+
+// Ensure validity (throws if invalid)
+try
+{
+    stats.EnsureValid();
+    Console.WriteLine("Statistics validated successfully");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Validation failed: {ex.Message}");
+}
+
+// Validate individual entries
+foreach (var entry in stats.TopByCount(int.MaxValue))
+{
+    bool entryValid = entry.IsValid();
+    Console.WriteLine($"Entry '{entry.Sql}' is valid: {entryValid}");
+    
+    try
+    {
+        entry.EnsureValid();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Entry validation failed: {ex.Message}");
+    }
+}
+```
+
 ## NPlusOneIncidentExtensions
 
 `NPlusOneIncidentExtensions` provides a set of LINQ‑style extension methods for analysing collections of `NPlusOneIncident` objects.  
