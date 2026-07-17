@@ -75,3 +75,70 @@ Top fingerprints by occurrence:
 // Clear all incidents
 aggregator.Clear();
 ```
+
+## NPlusOneIncidentExtensions
+
+`NPlusOneIncidentExtensions` provides a set of LINQ‑style extension methods for analysing collections of `NPlusOneIncident` objects.  
+The methods enable filtering by severity or count, grouping by normalized query patterns, summarising totals, ordering by severity and count, and retrieving the most severe incidents, all without modifying the original collection.
+
+**Example usage**
+
+```csharp
+using System;
+using System.Collections.Generic;
+using EfCoreNPlusOneGuard;
+
+var incidents = new List<NPlusOneIncident>
+{
+    new NPlusOneIncident
+    {
+        SqlQuery = "SELECT * FROM Users",
+        CallSite = "UserService.GetAll()",
+        Severity = NPlusOneSeverity.High,
+        Count = 5
+    },
+    new NPlusOneIncident
+    {
+        SqlQuery = "SELECT * FROM Orders",
+        CallSite = "OrderService.GetAll()",
+        Severity = NPlusOneSeverity.Medium,
+        Count = 3
+    },
+    new NPlusOneIncident
+    {
+        SqlQuery = "SELECT * FROM Users",
+        CallSite = "UserService.GetAll()",
+        Severity = NPlusOneSeverity.High,
+        Count = 2
+    }
+};
+
+// Basic aggregations
+int total = incidents.TotalCount();
+int highTotal = incidents.TotalCountBySeverity(NPlusOneSeverity.High);
+string summary = incidents.ToSummaryString();
+
+// Filtering
+var highSeverity = incidents.FilterBySeverity(NPlusOneSeverity.High);
+var minCount = incidents.FilterByMinCount(4);
+
+// Ordering and selection
+var ordered = incidents.OrderBySeverityAndCount();
+var mostSevere = incidents.GetMostSevere();
+var topTwo = incidents.GetTopSevere(2);
+
+// Predicates
+bool hasHigh = incidents.HasHighSeverity();
+bool anyLarge = incidents.AnyExceedsCount(4);
+
+// Grouping by normalized query pattern
+var groups = incidents.GroupByQueryPattern();
+
+Console.WriteLine($"Total incidents: {total}");
+Console.WriteLine(summary);
+Console.WriteLine($"Most severe query: {mostSevere?.SqlQuery}");
+Console.WriteLine($"Has high severity: {hasHigh}");
+Console.WriteLine($"Any incident with count >= 4: {anyLarge}");
+```
+
+The example demonstrates how the extension methods can be combined to produce rich diagnostics and reports from a simple list of `NPlusOneIncident` objects.
