@@ -5,8 +5,11 @@ using System.Text.Json.Serialization;
 namespace EfCoreNPlusOneGuard
 {
     /// <summary>
-    /// Provides JSON serialization helpers for <see cref="QueryFingerprintValidation"/>.
+    /// Provides JSON serialization and deserialization helpers for <see cref="QueryFingerprintValidationResult"/>.
     /// </summary>
+    /// <remarks>
+    /// This class contains extension methods for serializing and deserializing <see cref="QueryFingerprintValidationResult"/> instances to and from JSON.
+    /// </remarks>
     public static class QueryFingerprintValidationJsonExtensions
     {
         /// <summary>
@@ -22,10 +25,10 @@ namespace EfCoreNPlusOneGuard
         /// <summary>
         /// Serializes a <see cref="QueryFingerprint"/> validation result to a JSON string.
         /// </summary>
-        /// <param name="value">The QueryFingerprint to validate and serialize.</param>
+        /// <param name="value">The <see cref="QueryFingerprint"/> to validate and serialize.</param>
         /// <param name="indented">Whether to format the JSON with indentation.</param>
         /// <returns>JSON string representation of the validation result.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
         public static string ToJson(this QueryFingerprint value, bool indented = false)
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -51,8 +54,8 @@ namespace EfCoreNPlusOneGuard
         /// Deserializes a <see cref="QueryFingerprintValidationResult"/> from a JSON string.
         /// </summary>
         /// <param name="json">The JSON string to deserialize.</param>
-        /// <returns>A QueryFingerprintValidationResult instance.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
+        /// <returns>A <see cref="QueryFingerprintValidationResult"/> instance.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty or whitespace.</exception>
         /// <exception cref="JsonException">Thrown when JSON is invalid.</exception>
         public static QueryFingerprintValidationResult FromJson(string json)
@@ -60,20 +63,23 @@ namespace EfCoreNPlusOneGuard
             ArgumentException.ThrowIfNullOrEmpty(json);
 
             return JsonSerializer.Deserialize<QueryFingerprintValidationResult>(json, JsonOptions)
-                   ?? throw new JsonException("Failed to deserialize QueryFingerprintValidationResult.");
+                ?? throw new JsonException("Failed to deserialize QueryFingerprintValidationResult.");
         }
 
         /// <summary>
         /// Tries to deserialize a <see cref="QueryFingerprintValidationResult"/> from a JSON string.
         /// </summary>
         /// <param name="json">The JSON string to deserialize.</param>
-        /// <param name="value">The deserialized QueryFingerprintValidationResult, or null if failed.</param>
+        /// <param name="value">The deserialized <see cref="QueryFingerprintValidationResult"/>, or <see langword="null"/> if failed.</param>
         /// <returns>True if deserialization succeeded, false otherwise.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty or whitespace.</exception>
         public static bool TryFromJson(string json, out QueryFingerprintValidationResult? value)
         {
+            ArgumentException.ThrowIfNullOrEmpty(json);
+
             try
             {
-                ArgumentException.ThrowIfNullOrEmpty(json);
                 value = JsonSerializer.Deserialize<QueryFingerprintValidationResult>(json, JsonOptions);
                 return value is not null;
             }
@@ -85,7 +91,7 @@ namespace EfCoreNPlusOneGuard
         }
 
         /// <summary>
-        /// Represents the result of validating a QueryFingerprint.
+        /// Represents the result of validating a <see cref="QueryFingerprint"/>.
         /// </summary>
         public sealed class QueryFingerprintValidationResult
         {
