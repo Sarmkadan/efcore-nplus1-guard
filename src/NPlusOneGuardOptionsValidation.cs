@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace EfCoreNPlusOneGuard
 {
@@ -23,20 +24,21 @@ namespace EfCoreNPlusOneGuard
             var problems = new List<string>();
 
             if (value.Threshold <= 0)
+            {
                 problems.Add("Threshold must be greater than zero.");
+            }
 
             if (value.DetectionWindow <= TimeSpan.Zero)
-                problems.Add("DetectionWindow must be positive.");
-
-            if (value.IgnoredQueryPatterns != null)
             {
-                for (int i = 0; i < value.IgnoredQueryPatterns.Count; i++)
-                {
-                    if (string.IsNullOrWhiteSpace(value.IgnoredQueryPatterns[i]))
-                    {
-                        problems.Add($"Ignored query pattern at index {i} cannot be null or whitespace.");
-                    }
-                }
+                problems.Add("DetectionWindow must be positive.");
+            }
+
+            if (value.IgnoredQueryPatterns?.Count > 0)
+            {
+                problems.AddRange(value.IgnoredQueryPatterns
+                    .Select((pattern, index) => (pattern, index))
+                    .Where(t => string.IsNullOrWhiteSpace(t.pattern))
+                    .Select(t => $"Ignored query pattern at index {t.index} cannot be null or whitespace."));
             }
 
             return problems.AsReadOnly();
@@ -51,7 +53,6 @@ namespace EfCoreNPlusOneGuard
         public static bool IsValid(this NPlusOneGuardOptions value)
         {
             ArgumentNullException.ThrowIfNull(value);
-
             return value.Validate().Count == 0;
         }
 
