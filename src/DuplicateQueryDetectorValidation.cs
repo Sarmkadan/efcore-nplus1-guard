@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace EfCoreNPlusOneGuard
@@ -23,12 +24,12 @@ namespace EfCoreNPlusOneGuard
             {
                 if (string.IsNullOrEmpty(group.Sql))
                 {
-                    problems.Add($"Duplicate query group has null or empty SQL.");
+                    problems.Add("Duplicate query group has null or empty SQL.");
                 }
 
-                if (string.IsNullOrEmpty(group.Parameters))
+                if (group.Parameters is { Length: 0 })
                 {
-                    problems.Add($"Duplicate query group has null or empty parameters.");
+                    problems.Add("Duplicate query group has empty parameters.");
                 }
 
                 if (group.Count <= 0)
@@ -46,21 +47,19 @@ namespace EfCoreNPlusOneGuard
         /// <param name="value">The <see cref="DuplicateQueryDetector"/> to check.</param>
         /// <returns>True if the detector is valid; otherwise, false.</returns>
         public static bool IsValid(this DuplicateQueryDetector value)
-        {
-            return Validate(value).Count == 0;
-        }
+            => Validate(value).Count == 0;
 
         /// <summary>
         /// Ensures that the provided <see cref="DuplicateQueryDetector"/> is valid.
         /// </summary>
         /// <param name="value">The <see cref="DuplicateQueryDetector"/> to validate.</param>
-        /// <exception cref="ArgumentException">Thrown if the detector is invalid.</exception>
+        /// <exception cref="ArgumentException">Thrown if the detector is invalid with details of validation failures.</exception>
         public static void EnsureValid(this DuplicateQueryDetector value)
         {
             var problems = Validate(value);
             if (problems.Count > 0)
             {
-                throw new ArgumentException(string.Join("\n", problems), nameof(value));
+                throw new ArgumentException(string.Join(Environment.NewLine, problems), nameof(value));
             }
         }
     }
