@@ -205,3 +205,37 @@ Console.WriteLine($"Any incident with count >= 4: {anyLarge}");
 ```
 
 The example demonstrates how the extension methods can be combined to produce rich diagnostics and reports from a simple list of `NPlusOneIncident` objects.
+
+## NPlusOneGuardOptionsExtensions
+
+The `NPlusOneGuardOptionsExtensions` static class provides extension methods for the `NPlusOneGuardOptions` class. These methods offer convenient ways to check configuration options and retrieve string representations of numeric values without directly accessing the properties.
+
+Example usage:
+
+```csharp
+using System;
+using EfCoreNPlusOneGuard;
+
+// Create options with default values
+var options = new NPlusOneGuardOptions();
+
+// Check if a query pattern is ignored
+bool isIgnored = options.IsQueryIgnored("SELECT * FROM Users");
+Console.WriteLine($"Is query ignored: {isIgnored}");
+
+// Get threshold as formatted string
+string threshold = options.GetThresholdString();
+Console.WriteLine($"Threshold: {threshold}");
+
+// Get detection window as formatted string
+string detectionWindow = options.GetDetectionWindowString();
+Console.WriteLine($"Detection window: {detectionWindow}");
+
+// Check if throw on detection is enabled
+bool throwOnDetection = options.IsThrowOnDetectionEnabled();
+Console.WriteLine($"Throw on detection: {throwOnDetection}");
+
+// Check if log on detection is enabled
+bool logOnDetection = options.IsLogOnDetectionEnabled();
+Console.WriteLine($"Log on detection: {logOnDetection}");
+```
