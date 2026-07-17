@@ -34,7 +34,11 @@ namespace EfCoreNPlusOneGuard
             ArgumentNullException.ThrowIfNull(fingerprint);
 
             // Using the first 8 characters of the hash for identification.
-            return $"Query({fingerprint.CommandTextHash.Substring(0, Math.Min(8, fingerprint.CommandTextHash.Length))}) at {fingerprint.CallSite}";
+            var hashPrefix = fingerprint.CommandTextHash.Length >= 8
+                ? fingerprint.CommandTextHash.Substring(0, 8)
+                : fingerprint.CommandTextHash;
+
+            return $"Query({hashPrefix}) at {fingerprint.CallSite}";
         }
     }
 }
