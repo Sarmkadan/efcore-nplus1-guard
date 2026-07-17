@@ -271,3 +271,40 @@ if (CallSiteWhitelistJsonExtensions.TryFromJson(json, out var parsed))
 ```
 
 The `CallSiteWhitelistConverter` implements `JsonConverter<CallSiteWhitelist>` and is automatically used by the `ToJson`/`FromJson` methods, handling both exact and pattern entries via its `Read` and `Write` overrides.
+
+
+## QueryFingerprintValidationJsonExtensions
+
+The `QueryFingerprintValidationJsonExtensions` static class provides JSON serialization and deserialization helpers for `QueryFingerprintValidationResult` objects. It enables converting query fingerprint validation results to JSON strings and parsing them back from JSON, supporting both compact and indented formatting.
+
+Example usage:
+
+```csharp
+using System;
+using EfCoreNPlusOneGuard;
+
+// Create a query fingerprint
+var fingerprint = new QueryFingerprint(
+    "SELECT * FROM Users WHERE Id = @id",
+    "MyApp.Services.UserService.GetUser(Int32 id)"
+);
+
+// Validate and serialize to JSON
+string json = fingerprint.ToJson(indented: true);
+Console.WriteLine("Validation result:");
+Console.WriteLine(json);
+
+// Deserialize back to a validation result instance
+var result = QueryFingerprintValidationJsonExtensions.FromJson(json);
+Console.WriteLine($"Is valid: {result.IsValid}");
+Console.WriteLine($"Command text hash: {result.CommandTextHash}");
+Console.WriteLine($"Normalized SQL: {result.NormalizedSql}");
+Console.WriteLine($"Call site: {result.CallSite}");
+Console.WriteLine($"Validation errors: {string.Join(", ", result.ValidationErrors)}");
+
+// Or use the TryFromJson variant for safer parsing
+if (QueryFingerprintValidationJsonExtensions.TryFromJson(json, out var parsedResult))
+{
+    Console.WriteLine("Successfully parsed validation result with TryFromJson.");
+}
+```
