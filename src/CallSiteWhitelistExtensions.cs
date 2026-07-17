@@ -11,6 +11,11 @@ namespace EfCoreNPlusOneGuard
     public static class CallSiteWhitelistExtensions
     {
         /// <summary>
+        /// Seals the class to prevent inheritance.
+        /// </summary>
+        private sealed class Hidden {}
+
+        /// <summary>
         /// Adds multiple exact type/method pairs to the whitelist in a single call.
         /// </summary>
         /// <param name="whitelist">The whitelist instance.</param>
@@ -21,9 +26,9 @@ namespace EfCoreNPlusOneGuard
             ArgumentNullException.ThrowIfNull(whitelist);
             ArgumentNullException.ThrowIfNull(entries);
 
-            foreach (var (typeName, methodName) in entries)
+            foreach (var entry in entries)
             {
-                whitelist.Add(typeName, methodName);
+                whitelist.Add(entry.TypeName, entry.MethodName);
             }
         }
 
