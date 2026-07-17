@@ -24,18 +24,35 @@ public static class NPlusOneIncidentValidation
         {
             problems.Add("SQL query cannot be null or whitespace.");
         }
+        else if (value.SqlQuery.Length < 10)
+        {
+            problems.Add("SQL query must contain a meaningful query (at least 10 characters).");
+        }
 
         if (value.Count <= 0)
         {
             problems.Add("Execution count must be greater than zero.");
+        }
+        else if (value.Count > 1000000)
+        {
+            problems.Add("Execution count is unreasonably high (maximum 1,000,000).");
+        }
+
+        if (value.Severity == default)
+        {
+            problems.Add("Severity must be explicitly set to Low, Medium, or High.");
         }
 
         if (string.IsNullOrWhiteSpace(value.StackTrace))
         {
             problems.Add("Stack trace cannot be null or whitespace.");
         }
+        else if (value.StackTrace.Length < 20)
+        {
+            problems.Add("Stack trace must contain sufficient debugging information (at least 20 characters).");
+        }
 
-        return problems;
+        return problems.AsReadOnly();
     }
 
     /// <summary>
