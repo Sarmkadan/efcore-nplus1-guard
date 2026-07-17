@@ -102,6 +102,9 @@ public static class NPlusOneIncidentExtensions
 
         foreach (var incident in incidents)
         {
+            ArgumentNullException.ThrowIfNull(incident);
+            ArgumentException.ThrowIfNullOrEmpty(incident.SqlQuery, nameof(incident.SqlQuery));
+
             var normalizedQuery = NormalizeSqlQuery(incident.SqlQuery);
             if (!groups.TryGetValue(normalizedQuery, out var group))
             {
@@ -252,6 +255,13 @@ public static class NPlusOneIncidentExtensions
         return incidents.Any(i => i.Count >= threshold);
     }
 
+    /// <summary>
+    /// Normalizes a SQL query string for comparison purposes.
+    /// Removes extra whitespace, normalizes line endings, trims, and removes trailing semicolons.
+    /// This allows similar queries with different formatting to be grouped together.
+    /// </summary>
+    /// <param name="sql">The SQL query string to normalize.</param>
+    /// <returns>A normalized version of the SQL query suitable for comparison.</returns>
     private static string NormalizeSqlQuery(string sql)
     {
         if (string.IsNullOrWhiteSpace(sql))
@@ -263,8 +273,14 @@ public static class NPlusOneIncidentExtensions
         var normalized = sql
             .Replace("\r\n", " ", StringComparison.Ordinal)
             .Replace("\n", " ", StringComparison.Ordinal)
-            .Replace("\r", " ", StringComparison.Ordinal)
-            .Replace("  ", " ", StringComparison.Ordinal);
+            .Replace("\r", " ", StringComparison.Ordinal);
+
+        // Collapse multiple spaces into single space
+        normalized = System.Text.RegularExpressions.Regex.Replace(
+            normalized,
+            "[ ]+",
+            " ",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
 
         // Trim and remove trailing semicolon
         normalized = normalized.Trim();
