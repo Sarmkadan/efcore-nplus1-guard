@@ -46,24 +46,18 @@ namespace EfCoreNPlusOneGuard
         }
 
         /// <summary>
-        /// Tries to deserialize a <see cref="DuplicateQueryDetector"/> from JSON.
+        /// Attempts to deserialize a <see cref="DuplicateQueryDetector"/> from JSON.
         /// </summary>
         /// <param name="json">The JSON string to deserialize.</param>
-        /// <param name="value">The deserialized <see cref="DuplicateQueryDetector"/>.</param>
-        /// <returns>True if successful, false otherwise.</returns>
+        /// <param name="value">When this method returns, contains the deserialized <see cref="DuplicateQueryDetector"/> if successful, or null if deserialization failed.</param>
+        /// <returns>True if deserialization succeeded; otherwise, false.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="json"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown if <paramref name="json"/> is empty.</exception>
         public static bool TryFromJson(string json, out DuplicateQueryDetector? value)
         {
-            try
-            {
-                ArgumentException.ThrowIfNullOrEmpty(json);
-                value = JsonSerializer.Deserialize<DuplicateQueryDetector>(json, Options);
-                return true;
-            }
-            catch (JsonException)
-            {
-                value = null;
-                return false;
-            }
+            ArgumentException.ThrowIfNullOrEmpty(json);
+            value = JsonSerializer.Deserialize<DuplicateQueryDetector>(json, Options);
+            return value is not null;
         }
     }
 }
