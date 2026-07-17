@@ -239,3 +239,35 @@ Console.WriteLine($"Throw on detection: {throwOnDetection}");
 bool logOnDetection = options.IsLogOnDetectionEnabled();
 Console.WriteLine($"Log on detection: {logOnDetection}");
 ```
+
+## CallSiteWhitelistJsonExtensions
+
+`CallSiteWhitelistJsonExtensions` adds JSON‑serialization support for `CallSiteWhitelist`. It provides extension methods to convert a whitelist to a JSON string and static helpers to deserialize from JSON, using a custom `CallSiteWhitelistConverter` that knows how to read and write the internal whitelist entries.
+
+Example usage:
+
+```csharp
+using System;
+using EfCoreNPlusOneGuard;
+
+var whitelist = new CallSiteWhitelist();
+whitelist.Add("MyApp.Services.UserService", "GetUser");
+whitelist.AddPattern("MyApp.Repositories.*");
+
+// Serialize the whitelist to a formatted JSON string
+string json = whitelist.ToJson(indented: true);
+Console.WriteLine("Serialized whitelist:");
+Console.WriteLine(json);
+
+// Deserialize back to a whitelist instance
+var deserialized = CallSiteWhitelistJsonExtensions.FromJson(json);
+Console.WriteLine($"Deserialized contains {deserialized?.Count ?? 0} entries.");
+
+// Or use the TryFromJson variant
+if (CallSiteWhitelistJsonExtensions.TryFromJson(json, out var parsed))
+{
+    Console.WriteLine("Successfully parsed whitelist with TryFromJson.");
+}
+```
+
+The `CallSiteWhitelistConverter` implements `JsonConverter<CallSiteWhitelist>` and is automatically used by the `ToJson`/`FromJson` methods, handling both exact and pattern entries via its `Read` and `Write` overrides.
