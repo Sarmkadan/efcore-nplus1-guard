@@ -15,7 +15,7 @@ namespace EfCoreNPlusOneGuard
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false,
-            Converters = { new JsonStringEnumConverter() }
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
         };
 
         /// <summary>
