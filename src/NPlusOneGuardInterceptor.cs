@@ -3,12 +3,20 @@ using System.Data.Common;
 
 namespace EfCoreNPlusOneGuard;
 
+/// <summary>
+/// Intercepts database commands to detect N+1 query patterns.
+/// </summary>
 public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
 {
     private readonly NPlusOneGuardOptions _options;
     private readonly Action<NPlusOneIncident>? _onDetected;
     private readonly QueryTracker _tracker;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NPlusOneGuardInterceptor"/> class.
+    /// </summary>
+    /// <param name="options">The guard options.</param>
+    /// <param name="onDetected">Optional callback invoked when an N+1 incident is detected.</param>
     public NPlusOneGuardInterceptor(NPlusOneGuardOptions options, Action<NPlusOneIncident>? onDetected = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -16,6 +24,13 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
         _tracker = new QueryTracker(options);
     }
 
+    /// <summary>
+    /// Intercepts synchronous reader execution.
+    /// </summary>
+    /// <param name="command">The database command.</param>
+    /// <param name="eventData">Event data.</param>
+    /// <param name="result">The interception result.</param>
+    /// <returns>The interception result.</returns>
     public override InterceptionResult<DbDataReader> ReaderExecuting(
         DbCommand command,
         CommandEventData eventData,
@@ -36,6 +51,14 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
         return base.ReaderExecuting(command, eventData, result);
     }
 
+    /// <summary>
+    /// Intercepts asynchronous reader execution.
+    /// </summary>
+    /// <param name="command">The database command.</param>
+    /// <param name="eventData">Event data.</param>
+    /// <param name="result">The interception result.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The interception result.</returns>
     public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
         DbCommand command,
         CommandEventData eventData,
