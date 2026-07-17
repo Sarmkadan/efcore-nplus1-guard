@@ -49,7 +49,7 @@ namespace EfCoreNPlusOneGuard
         {
             ArgumentNullException.ThrowIfNull(options);
 
-            return options.DetectionWindow.ToString("c", CultureInfo.InvariantCulture);
+            return options.DetectionWindow.ToString("g", CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -63,6 +63,19 @@ namespace EfCoreNPlusOneGuard
             ArgumentNullException.ThrowIfNull(options);
 
             return options.ThrowOnDetection;
+        }
+
+        /// <summary>
+        /// Checks if the options are configured to log detections.
+        /// </summary>
+        /// <param name="options">The options to check.</param>
+        /// <returns>True if the options are configured to log detections, false otherwise.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="options"/> is null.</exception>
+        public static bool IsLogOnDetectionEnabled(this NPlusOneGuardOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+
+            return options.LogOnDetection;
         }
     }
 }
