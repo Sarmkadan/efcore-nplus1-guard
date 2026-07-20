@@ -47,11 +47,26 @@ public sealed class QueryTracker
         // Проверка на превышение порога
         if (updatedTimestamps.Count >= options.Threshold)
         {
+            // Determine severity based on configurable thresholds
+            NPlusOneSeverity severity;
+            if (updatedTimestamps.Count >= options.MediumSeverityThreshold)
+            {
+                severity = NPlusOneSeverity.High;
+            }
+            else if (updatedTimestamps.Count >= options.LowSeverityThreshold)
+            {
+                severity = NPlusOneSeverity.Medium;
+            }
+            else
+            {
+                severity = NPlusOneSeverity.Low;
+            }
+
             var incident = new NPlusOneIncident
             {
                 SqlQuery = fp.NormalizedSql,
                 Count = updatedTimestamps.Count,
-                Severity = NPlusOneSeverity.High,
+                Severity = severity,
                 StackTrace = Environment.StackTrace
             };
             return incident;

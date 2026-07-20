@@ -108,8 +108,9 @@ public sealed class FileIncidentReporter : IIncidentReporter
         var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
         var fingerprint = incident.SqlQuery ?? string.Empty;
         var count = incident.Count;
+        var severity = incident.Severity.ToString();
         var stackTopFrame = incident.StackTrace?.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
 
-        return $"{timestamp} | {fingerprint} | {count} | {stackTopFrame}";
+        return $"{timestamp} | {fingerprint} | {count} | {severity} | {stackTopFrame}";
     }
 }
