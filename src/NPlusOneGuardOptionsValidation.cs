@@ -1,79 +1,62 @@
-#nullable enable
-
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Extensions.Options;
 
 namespace EfCoreNPlusOneGuard
 {
     /// <summary>
-    /// Provides validation helpers for <see cref="NPlusOneGuardOptions"/> instances.
+    /// Validates <see cref="NPlusOneGuardOptions"/> instances.
     /// </summary>
-    public static class NPlusOneGuardOptionsValidation
+    public sealed class NPlusOneGuardOptionsValidation : IValidateOptions<NPlusOneGuardOptions>
     {
         /// <summary>
-        /// Validates a <see cref="NPlusOneGuardOptions"/> instance and returns any problems found.
+        /// Validates the supplied options.
         /// </summary>
-        /// <param name="value">The options to validate.</param>
-        /// <returns>A list of human-readable problem descriptions; empty if valid.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> is null.</exception>
-        public static IReadOnlyList<string> Validate(this NPlusOneGuardOptions value)
+        /// <param name="name">The name of the options instance.</param>
+        /// <param name="options">The options instance to validate.</param>
+        /// <returns>A <see cref="ValidateOptionsResult"/> indicating success or failure.</returns>
+        public ValidateOptionsResult Validate(string name, NPlusOneGuardOptions options)
         {
-            ArgumentNullException.ThrowIfNull(value);
+            var failures = new List<string>();
 
-            var problems = new List<string>();
-
-            if (value.Threshold <= 0)
+            if (options.Threshold <= 0)
             {
-                problems.Add("Threshold must be greater than zero.");
+                failures.Add("Threshold must be greater than 0.");
             }
 
-            if (value.DetectionWindow <= TimeSpan.Zero)
+            if (options.DetectionWindow <= TimeSpan.Zero)
             {
-                problems.Add("DetectionWindow must be positive.");
+                failures.Add("DetectionWindow must be greater than zero.");
             }
 
-            if (value.IgnoredQueryPatterns?.Count > 0)
+            if (options.LowSeverityThreshold < 0)
             {
-                problems.AddRange(value.IgnoredQueryPatterns
-                    .Select((pattern, index) => (pattern, index))
-                    .Where(t => string.IsNullOrWhiteSpace(t.pattern))
-                    .Select(t => $"Ignored query pattern at index {t.index} cannot be null or whitespace."));
+                failures.Add("LowSeverityThreshold must be non-negative.");
             }
 
-            return problems.AsReadOnly();
-        }
-
-        /// <summary>
-        /// Determines whether a <see cref="NPlusOneGuardOptions"/> instance is valid.
-        /// </summary>
-        /// <param name="value">The options to check.</param>
-        /// <returns>True if the options are valid; otherwise false.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> is null.</exception>
-        public static bool IsValid(this NPlusOneGuardOptions value)
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            return value.Validate().Count == 0;
-        }
-
-        /// <summary>
-        /// Ensures that a <see cref="NPlusOneGuardOptions"/> instance is valid, throwing an exception if not.
-        /// </summary>
-        /// <param name="value">The options to validate.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> is null.</exception>
-        /// <exception cref="ArgumentException">Thrown if the options contain invalid values.</exception>
-        public static void EnsureValid(this NPlusOneGuardOptions value)
-        {
-            ArgumentNullException.ThrowIfNull(value);
-
-            var problems = value.Validate();
-            if (problems.Count > 0)
+            if (options.MediumSeverityThreshold <= options.LowSeverityThreshold)
             {
-                throw new ArgumentException(
-                    $"NPlusOneGuardOptions is invalid. Problems: {string.Join(", ", problems)}.",
-                    nameof(value)
-                );
+                failures.Add("MediumSeverityThreshold must be greater than LowSeverityThreshold.");
             }
+
+            if (options.IgnoredQueryPatterns == null)
+            {
+                failures.Add("IgnoredQueryPatterns cannot be null.");
+            }
+            else
+            {
+                foreach (var pattern in options.IgnoredQueryPatterns)
+                {
+                    if (string.IsNullOrWhiteSpace(pattern))
+                    {
+                        failures.Add("IgnoredQueryPatterns contains an empty or whitespace pattern.");
+                    }
+                }
+            }
+
+            return failures.Count == 0
+                ? ValidateOptionsResult.Success
+                : ValidateOptionsResult.Fail(failures);
         }
     }
 }
