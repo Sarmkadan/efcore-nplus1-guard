@@ -72,7 +72,7 @@ public sealed class QueryTracker
             };
 
             // Capture call site if enabled
-            incident.CallSite = ExtractCallSite(Environment.StackTrace);
+            incident.CallSite = ExtractCallSite();
 
             return incident;
         }
@@ -81,84 +81,38 @@ public sealed class QueryTracker
     }
 
     /// <summary>
-    /// Extracts the call site from the stack trace, skipping EF Core, System, and this library's frames.
+    /// Extracts the call site from the current stack trace, skipping EF Core, System, Microsoft,
+    /// and frames belonging to this library. Returns a formatted string like
+    /// "MethodName at FileName:line" or null if no suitable frame is found.
     /// </summary>
-    /// <param name="stackTrace">The full stack trace string.</param>
-    /// <returns>A formatted call site string ("MethodName at FileName:line") or null if no application frame found.</returns>
-    private string? ExtractCallSite(string stackTrace)
+    /// <returns>The formatted call site or null.</returns>
+    private string? ExtractCallSite()
     {
-        if (!_options.CaptureCallSite || string.IsNullOrEmpty(stackTrace))
+        if (!_options.CaptureCallSite)
         {
             return null;
         }
 
         try
         {
-            // Parse the stack trace string to extract frames
-            // Stack trace format: "at Namespace.Type.Method (file:line)"
-            var lines = stackTrace.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var stack = new StackTrace(true);
+            var frames = stack.GetFrames() ?? Array.Empty<StackFrame>();
 
-            foreach (var line in lines)
+            foreach (var frame in frames)
             {
-                var trimmed = line.Trim();
-                if (!trimmed.StartsWith("at ", StringComparison.Ordinal))
+                var method = frame.GetMethod();
+                if (method == null)
                 {
                     continue;
                 }
 
-                // Extract the method signature part
-                var methodPart = trimmed.Substring(3).Trim();
-
-                // Find the end of the method signature (before '(' or space)
-                var endIndex = methodPart.IndexOf('(');
-                if (endIndex < 0)
-                {
-                    endIndex = methodPart.IndexOf(' ');
-                }
-                if (endIndex < 0)
-                {
-                    endIndex = methodPart.Length;
-                }
-
-                var fullMethod = methodPart.Substring(0, endIndex).Trim();
-
-                // Split into type and method
-                var lastDot = fullMethod.LastIndexOf('.');
-                if (lastDot < 0)
+                var declaringType = method.DeclaringType;
+                if (declaringType == null)
                 {
                     continue;
                 }
 
-                var typeName = fullMethod.Substring(0, lastDot);
-                var methodName = fullMethod.Substring(lastDot + 1);
-
-                // Extract file and line info from the part after '('
-                string? fileName = null;
-                int lineNumber = 0;
-
-                var openParenIndex = methodPart.IndexOf('(');
-                if (openParenIndex >= 0)
-                {
-                    var fileInfoPart = methodPart.Substring(openParenIndex + 1);
-                    var closeParenIndex = fileInfoPart.IndexOf(')');
-                    if (closeParenIndex > 0)
-                    {
-                        var fileInfo = fileInfoPart.Substring(0, closeParenIndex);
-                        var parts = fileInfo.Split(':');
-                        if (parts.Length >= 2)
-                        {
-                            fileName = parts[0];
-                            if (int.TryParse(parts[1], out var lineNum))
-                            {
-                                lineNumber = lineNum;
-                            }
-                        }
-                        else if (parts.Length == 1)
-                        {
-                            fileName = parts[0];
-                        }
-                    }
-                }
+                var typeName = declaringType.FullName ?? declaringType.Name;
 
                 // Skip EF Core frames
                 if (typeName.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.OrdinalIgnoreCase) ||
@@ -167,7 +121,7 @@ public sealed class QueryTracker
                     continue;
                 }
 
-                // Skip System namespace frames (but allow System.Linq, System.Collections, etc. that might be in this library)
+                // Skip generic System namespace frames, but allow common LINQ/Collections/Text namespaces
                 if (typeName.StartsWith("System.", StringComparison.OrdinalIgnoreCase) &&
                     !typeName.StartsWith("System.Linq", StringComparison.OrdinalIgnoreCase) &&
                     !typeName.StartsWith("System.Collections", StringComparison.OrdinalIgnoreCase) &&
@@ -176,7 +130,7 @@ public sealed class QueryTracker
                     continue;
                 }
 
-                // Skip Microsoft.* frames
+                // Skip other Microsoft.* frames
                 if (typeName.StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
@@ -188,17 +142,17 @@ public sealed class QueryTracker
                     continue;
                 }
 
-                // Found an application frame - format the call site
-                if (string.IsNullOrEmpty(methodName))
-                {
-                    continue;
-                }
+                // This is the first application frame
+                var methodName = method.Name;
+                var fileName = frame.GetFileName();
+                var lineNumber = frame.GetFileLineNumber();
 
-                // Format: MethodName at FileName:line
                 var callSite = methodName;
                 if (!string.IsNullOrEmpty(fileName))
                 {
-                    callSite += " at " + fileName;
+                    // Use only the file name, not the full path, for readability
+                    var shortFileName = System.IO.Path.GetFileName(fileName);
+                    callSite += " at " + shortFileName;
                     if (lineNumber > 0)
                     {
                         callSite += ":" + lineNumber;
@@ -210,8 +164,7 @@ public sealed class QueryTracker
         }
         catch
         {
-            // If anything goes wrong with call site extraction, just return null
-            // The incident will still be created with the full stack trace
+            // Swallow any exception – call site is optional.
         }
 
         return null;
