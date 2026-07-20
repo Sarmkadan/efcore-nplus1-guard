@@ -47,4 +47,11 @@ public class NPlusOneIncident
 	/// used for debugging and identifying the source of the issue.
 	/// </summary>
 	public string StackTrace { get; set; } = string.Empty;
+
+/// <summary>
+/// Gets or sets the call site information (method name, file name, line number) for the N+1 query.
+/// This is extracted from the stack trace and represents the first application frame outside of
+/// EF Core, System, and this library's namespace.
+/// </summary>
+public string? CallSite { get; set; }
 }

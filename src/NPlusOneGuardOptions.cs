@@ -53,4 +53,12 @@ public class NPlusOneGuardOptions
     /// Incidents with a repeat count &gt;= this value are considered <c>High</c>.
     /// </summary>
     public int MediumSeverityThreshold { get; set; } = 50;
+
+/// <summary>
+/// Whether to capture the call site (method name, file name, line number) for N+1 incidents.
+/// When enabled, the first application frame (excluding EF Core, System, and this library's frames)
+/// is captured and stored in the CallSite property.
+/// </summary>
+/// <value><c>true</c> to capture call site; otherwise, <c>false</c>.</value>
+public bool CaptureCallSite { get; set; } = true;
 }

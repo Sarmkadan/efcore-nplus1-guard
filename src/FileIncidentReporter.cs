@@ -110,6 +110,12 @@ public sealed class FileIncidentReporter : IIncidentReporter
         var count = incident.Count;
         var severity = incident.Severity.ToString();
         var stackTopFrame = incident.StackTrace?.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+        var callSite = incident.CallSite ?? string.Empty;
+
+        if (!string.IsNullOrEmpty(callSite))
+        {
+            return $"{timestamp} | {fingerprint} | {count} | {severity} | {stackTopFrame} | CallSite: {callSite}";
+        }
 
         return $"{timestamp} | {fingerprint} | {count} | {severity} | {stackTopFrame}";
     }
