@@ -1,3 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
 namespace EfCoreNPlusOneGuard;
 
 /// <summary>
@@ -9,6 +14,14 @@ public sealed class IncidentAggregator
     private readonly object _lock = new();
     private readonly Dictionary<string, List<NPlusOneIncident>> _incidentsByFingerprint = new();
     private readonly List<NPlusOneIncident> _allIncidents = [];
+
+    // Tracks the most recent time a fingerprint was seen.
+    private readonly Dictionary<string, DateTime> _lastSeenByFingerprint = new();
+
+    /// <summary>
+    /// Represents a fingerprint offender with its occurrence count and the last time it was seen.
+    /// </summary>
+    public sealed record TopOffender(string Fingerprint, int Count, DateTime LastSeen);
 
     /// <summary>
     /// Adds an incident to the aggregator.
@@ -33,13 +46,16 @@ public sealed class IncidentAggregator
             }
 
             list.Add(incident);
+
+            // Update the last‑seen timestamp for this fingerprint.
+            _lastSeenByFingerprint[fingerprint] = DateTime.UtcNow;
         }
     }
 
     /// <summary>
     /// Gets the count of incidents grouped by fingerprint.
     /// </summary>
-    /// <returns>A read-only dictionary mapping fingerprints to incident counts.</returns>
+    /// <returns>A read‑only dictionary mapping fingerprints to incident counts.</returns>
     public IReadOnlyDictionary<string, int> CountsByFingerprint()
     {
         lock (_lock)
@@ -57,7 +73,7 @@ public sealed class IncidentAggregator
     /// <summary>
     /// Gets all collected incidents.
     /// </summary>
-    /// <returns>A read-only list of all incidents.</returns>
+    /// <returns>A read‑only list of all incidents.</returns>
     public IReadOnlyList<NPlusOneIncident> All()
     {
         lock (_lock)
@@ -67,7 +83,7 @@ public sealed class IncidentAggregator
     }
 
     /// <summary>
-    /// Builds a human-readable summary text of the collected incidents.
+    /// Builds a human‑readable summary text of the collected incidents.
     /// </summary>
     /// <returns>A summary string.</returns>
     public string BuildSummaryText()
@@ -85,7 +101,7 @@ public sealed class IncidentAggregator
                 .Where(kvp => kvp.Value.Count > 1)
                 .Sum(kvp => kvp.Value.Count);
 
-            var builder = new System.Text.StringBuilder();
+            var builder = new StringBuilder();
             builder.AppendLine($"N+1 Guard Summary ({DateTime.UtcNow:yyyy-MM-dd HH:mm:ss UTC})");
             builder.AppendLine();
             builder.AppendLine($"Total incidents: {totalCount}");
@@ -109,6 +125,35 @@ public sealed class IncidentAggregator
     }
 
     /// <summary>
+    /// Returns the top <paramref name="n"/> fingerprints with the highest total execution counts,
+    /// ordered descending. Each entry includes the fingerprint, its count, and the last‑seen timestamp.
+    /// </summary>
+    /// <param name="n">The maximum number of offenders to return.</param>
+    /// <returns>A read‑only list of <see cref="TopOffender"/> records.</returns>
+    public IReadOnlyList<TopOffender> GetTopOffenders(int n)
+    {
+        if (n <= 0)
+        {
+            return Array.Empty<TopOffender>();
+        }
+
+        lock (_lock)
+        {
+            var offenders = _incidentsByFingerprint
+                .Select(kvp => new TopOffender(
+                    Fingerprint: kvp.Key,
+                    Count: kvp.Value.Count,
+                    LastSeen: _lastSeenByFingerprint.TryGetValue(kvp.Key, out var dt) ? dt : DateTime.MinValue))
+                .OrderByDescending(o => o.Count)
+                .ThenByDescending(o => o.LastSeen)
+                .Take(n)
+                .ToList();
+
+            return offenders;
+        }
+    }
+
+    /// <summary>
     /// Clears all collected incidents.
     /// </summary>
     public void Clear()
@@ -117,6 +162,7 @@ public sealed class IncidentAggregator
         {
             _incidentsByFingerprint.Clear();
             _allIncidents.Clear();
+            _lastSeenByFingerprint.Clear();
         }
     }
 }
