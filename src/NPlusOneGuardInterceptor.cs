@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Data.Common;
+using System.Text.RegularExpressions;
 
 namespace EfCoreNPlusOneGuard;
 
@@ -95,10 +96,16 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
             }
         }
 
+        // Check for TagWith("nplus1:ignore") comments before tracking
+        if (ShouldIgnoreQuery(commandText))
+        {
+            return;
+        }
+
         _tracker.TrackExecution(commandText, _onDetected);
     }
 
-    private ValueTask TrackQueryAsync(string commandText, CancellationToken cancellationToken)
+    private async ValueTask TrackQueryAsync(string commandText, CancellationToken cancellationToken)
     {
         if (commandText == null)
         {
@@ -111,11 +118,52 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
         {
             if (commandText.Contains(pattern, StringComparison.OrdinalIgnoreCase))
             {
-                return ValueTask.CompletedTask;
+                return;
             }
         }
 
+        // Check for TagWith("nplus1:ignore") comments before tracking
+        if (ShouldIgnoreQuery(commandText))
+        {
+            return;
+        }
+
         _tracker.TrackExecution(commandText, _onDetected);
-        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Checks if a query should be ignored based on TagWith("nplus1:ignore") comments.
+    /// EF Core's TagWith method adds SQL comments like: -- nplus1:ignore or /* nplus1:ignore */
+    /// </summary>
+    /// <param name="commandText">The SQL command text to check.</param>
+    /// <returns>True if the query should be ignored; otherwise false.</returns>
+    private bool ShouldIgnoreQuery(string commandText)
+    {
+        if (string.IsNullOrWhiteSpace(commandText))
+        {
+            return false;
+        }
+
+        // Check for SQL comments containing nplus1:ignore
+        // Supports both -- style comments (single line) and /* */ style comments (multi-line)
+
+        // Remove string literals first to avoid false positives inside strings
+        var withoutStrings = Regex.Replace(commandText, @"'[^']*'", "''");
+
+        // Check for -- nplus1:ignore (case insensitive)
+        var singleLineMatch = Regex.Match(withoutStrings, @"--\s*nplus1:\s*ignore", RegexOptions.IgnoreCase);
+        if (singleLineMatch.Success)
+        {
+            return true;
+        }
+
+        // Check for /* nplus1:ignore */ (case insensitive)
+        var multiLineMatch = Regex.Match(withoutStrings, @"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/*\s*nplus1:\s*ignore\s*\*/", RegexOptions.IgnoreCase);
+        if (multiLineMatch.Success)
+        {
+            return true;
+        }
+
+        return false;
     }
 }
