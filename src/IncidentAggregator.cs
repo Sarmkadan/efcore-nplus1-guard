@@ -24,6 +24,34 @@ public sealed class IncidentAggregator
     public sealed record TopOffender(string Fingerprint, int Count, DateTime LastSeen);
 
     /// <summary>
+    /// Represents a scan summary containing aggregated incident data.
+    /// </summary>
+    /// <param name="TotalQueries">Total number of queries tracked.</param>
+    /// <param name="UniqueFingerprints">Number of unique query fingerprints.</param>
+    /// <param name="TopOffenders">Top 5 fingerprint offenders by occurrence count.</param>
+    public sealed record Summary(int TotalQueries, int UniqueFingerprints, IReadOnlyList<TopOffender> TopOffenders);
+
+    /// <summary>
+    /// Gets a summary of the collected incidents including total count, unique fingerprints,
+    /// and top offenders. This data can be consumed by reporters to provide scan summaries.
+    /// </summary>
+    public Summary GetScanSummary()
+    {
+        lock (_lock)
+        {
+            var totalCount = _allIncidents.Count;
+            var uniqueCount = _incidentsByFingerprint.Count;
+            var offenders = GetTopOffenders(5);
+
+            return new Summary(
+                TotalQueries: totalCount,
+                UniqueFingerprints: uniqueCount,
+                TopOffenders: offenders
+            );
+        }
+    }
+
+    /// <summary>
     /// Adds an incident to the aggregator.
     /// </summary>
     /// <param name="incident">The incident to add.</param>
