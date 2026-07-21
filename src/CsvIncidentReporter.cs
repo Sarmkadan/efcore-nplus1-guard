@@ -94,7 +94,7 @@ public sealed class CsvIncidentReporter : IIncidentReporter
         if (truncate)
         {
             // Write header and first data line
-            var header = "Fingerprint,Count,DurationMs,CallSite";
+            var header = "Fingerprint,Count,Severity,DurationMs,CallSite";
             File.WriteAllLines(_filePath, new[] { header }.Concat(lines), _encoding);
         }
         else
@@ -109,10 +109,11 @@ public sealed class CsvIncidentReporter : IIncidentReporter
     {
         var fingerprint = EscapeCsvField(incident.SqlQuery ?? string.Empty);
         var count = incident.Count;
+        var severity = incident.Severity.ToString();
         var durationMs = "0"; // Duration is not currently tracked in NPlusOneIncident
         var callSite = EscapeCsvField(incident.CallSite ?? string.Empty);
 
-        return $"{fingerprint},{count},{durationMs},{callSite}";
+        return $"{fingerprint},{count},{severity},{durationMs},{callSite}";
     }
 
     /// <summary>

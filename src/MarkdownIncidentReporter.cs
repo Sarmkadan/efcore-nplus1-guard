@@ -53,17 +53,17 @@ public sealed class MarkdownIncidentReporter : IIncidentReporter
         // Summary table
         sb.AppendLine("| Fingerprint | Count | Severity |");
         sb.AppendLine("|---|---|---|");
-        sb.AppendLine($"| {EscapePipe(GetPropertyValue(incident, "Fingerprint") ?? GetPropertyValue(incident, "QueryFingerprint") ?? "N/A")} " +
-                      $"| {GetPropertyValue(incident, "Count") ?? "N/A"} " +
-                      $"| {GetPropertyValue(incident, "Severity") ?? "N/A"} |");
+        sb.AppendLine($"| {EscapePipe(GetPropertyValue(incident, "SqlQuery") ?? "N/A")} " +
+              $"| {GetPropertyValue(incident, "Count") ?? "N/A"} " +
+              $"| {GetPropertyValue(incident, "Severity") ?? "N/A"} |");
         sb.AppendLine();
 
         // Details – raw SQL
         sb.AppendLine("### SQL");
         sb.AppendLine("```sql");
         sb.AppendLine(GetPropertyValue(incident, "CommandText") ??
-                      GetPropertyValue(incident, "Sql") ??
-                      "N/A");
+        GetPropertyValue(incident, "Sql") ??
+        "N/A");
         sb.AppendLine("```");
         sb.AppendLine();
 
@@ -86,5 +86,5 @@ public sealed class MarkdownIncidentReporter : IIncidentReporter
     /// <summary>
     /// Escapes pipe characters so that markdown tables render correctly.
     /// </summary>
-    private static string EscapePipe(string input) => input.Replace("|", "\\|");
+    private static string EscapePipe(string input) => input.Replace("|", "&#124;");
 }
