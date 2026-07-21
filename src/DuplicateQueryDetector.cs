@@ -29,6 +29,15 @@ namespace EfCoreNPlusOneGuard
         private readonly Dictionary<(string sql, string? parameters), int> _queryCounts = new();
 
         /// <summary>
+        /// Gets the threshold value.
+        /// </summary>
+        /// <returns>The threshold value.</returns>
+        public int GetThreshold()
+        {
+            return _threshold;
+        }
+
+        /// <summary>
         /// Records a query execution.
         /// </summary>
         /// <param name="sql">The SQL query.</param>
