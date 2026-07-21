@@ -73,7 +73,7 @@ public sealed class QueryTracker
             };
 
             // Capture call site if enabled
-            incident.CallSite = ExtractCallSite();
+            incident.CallSite = ExtractCallSite(_options.MaxStackFrames);
 
             return incident;
         }
@@ -86,8 +86,9 @@ public sealed class QueryTracker
     /// and frames belonging to this library. Returns a formatted string like
     /// "MethodName at FileName:line" or null if no suitable frame is found.
     /// </summary>
+    /// <param name="maxStackFrames">The maximum number of stack frames to capture.</param>
     /// <returns>The formatted call site or null.</returns>
-    private string? ExtractCallSite()
+    private string? ExtractCallSite(int maxStackFrames)
     {
         if (!_options.CaptureCallSite)
         {
@@ -96,7 +97,7 @@ public sealed class QueryTracker
 
         try
         {
-            var stack = new StackTrace(true);
+            var stack = new StackTrace(maxStackFrames, true);
             var frames = stack.GetFrames() ?? Array.Empty<StackFrame>();
 
             foreach (var frame in frames)
