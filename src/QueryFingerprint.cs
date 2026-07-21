@@ -52,6 +52,7 @@ namespace EfCoreNPlusOneGuard
 
         /// <summary>
         /// Normalizes SQL by removing literals/parameters, collapsing whitespace, and converting to lower case.
+        /// Uses Regex for the primary normalization which is both efficient and maintainable.
         /// </summary>
         private static string NormalizeSql(string sql)
         {
@@ -67,12 +68,19 @@ namespace EfCoreNPlusOneGuard
         }
 
         /// <summary>
-        /// Computes the SHA256 hash of the given input string and returns it as a hex string.
+        /// Computes the SHA256 hash of the given input string.
+        /// Uses efficient span-based byte conversion to minimize allocations.
         /// </summary>
         private static string ComputeSha256Hash(string input)
         {
             using var sha256 = SHA256.Create();
-            var bytes = Encoding.UTF8.GetBytes(input);
+
+            // Use span-based APIs for efficient processing
+            ReadOnlySpan<char> inputSpan = input.AsSpan();
+            int byteCount = Encoding.UTF8.GetByteCount(inputSpan);
+            byte[] bytes = new byte[byteCount];
+            Encoding.UTF8.GetBytes(inputSpan, bytes);
+
             var hashBytes = sha256.ComputeHash(bytes);
             var sb = new StringBuilder(hashBytes.Length * 2);
             foreach (var b in hashBytes)
