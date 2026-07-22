@@ -28,6 +28,10 @@ namespace EfCoreNPlusOneGuard
 
         private QueryFingerprint(string commandTextHash, string normalizedSql, string callSite)
         {
+            ArgumentNullException.ThrowIfNull(commandTextHash);
+            ArgumentNullException.ThrowIfNull(normalizedSql);
+            ArgumentNullException.ThrowIfNull(callSite);
+
             CommandTextHash = commandTextHash;
             NormalizedSql = normalizedSql;
             CallSite = callSite;
@@ -41,8 +45,8 @@ namespace EfCoreNPlusOneGuard
         /// <returns>A new <see cref="QueryFingerprint"/> instance.</returns>
         public static QueryFingerprint Create(string commandText, string callSite)
         {
-            if (commandText is null) throw new ArgumentNullException(nameof(commandText));
-            if (callSite is null) throw new ArgumentNullException(nameof(callSite));
+            ArgumentNullException.ThrowIfNull(commandText);
+            ArgumentNullException.ThrowIfNull(callSite);
 
             var normalized = NormalizeSql(commandText);
             var hash = ComputeSha256Hash(normalized);
@@ -90,18 +94,28 @@ namespace EfCoreNPlusOneGuard
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Strips compiler-generated frames from the call site string.
+        /// </summary>
+        private static string StripCompilerFrames(string callSite)
+        {
+            var frames = callSite.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            var strippedFrames = frames.Where(frame => !frame.Contains("d__"));
+            return string.Join(Environment.NewLine, strippedFrames);
+        }
+
         public override bool Equals(object? obj) => Equals(obj as QueryFingerprint);
 
         public bool Equals(QueryFingerprint? other)
         {
             if (ReferenceEquals(this, other)) return true;
             if (other is null) return false;
-            return CommandTextHash == other.CommandTextHash && CallSite == other.CallSite;
+            return CommandTextHash == other.CommandTextHash && NormalizedSql == other.NormalizedSql && CallSite == StripCompilerFrames(other.CallSite);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(CommandTextHash, CallSite);
+            return HashCode.Combine(CommandTextHash, NormalizedSql, CallSite);
         }
 
         public static bool operator ==(QueryFingerprint? left, QueryFingerprint? right) =>
