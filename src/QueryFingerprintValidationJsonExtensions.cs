@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -29,18 +30,13 @@ namespace EfCoreNPlusOneGuard
         /// <param name="indented">Whether to format the JSON with indentation.</param>
         /// <returns>JSON string representation of the validation result.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
-        public static string ToJson(this QueryFingerprint value, bool indented = false)
+        public static string ToValidationJson(this QueryFingerprint value, bool indented = false)
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            var result = new QueryFingerprintValidationResult
-            {
-                CommandTextHash = value.CommandTextHash,
-                NormalizedSql = value.NormalizedSql,
-                CallSite = value.CallSite,
-                IsValid = value.IsValid(),
-                ValidationErrors = value.Validate().ToArray()
-            };
+            var result = value.IsValid()
+                ? QueryFingerprintValidationResult.Success(value.CommandTextHash, value.NormalizedSql, value.CallSite)
+                : QueryFingerprintValidationResult.Failure(value.CommandTextHash, value.NormalizedSql, value.CallSite, value.Validate().ToArray());
 
             var options = new JsonSerializerOptions(JsonOptions)
             {
@@ -58,12 +54,12 @@ namespace EfCoreNPlusOneGuard
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty or whitespace.</exception>
         /// <exception cref="JsonException">Thrown when JSON is invalid.</exception>
-        public static QueryFingerprintValidationResult FromJson(string json)
+        public static QueryFingerprintValidationResult FromValidationJson(string json)
         {
             ArgumentException.ThrowIfNullOrEmpty(json);
 
             return JsonSerializer.Deserialize<QueryFingerprintValidationResult>(json, JsonOptions)
-                ?? throw new JsonException("Failed to deserialize QueryFingerprintValidationResult.");
+            ?? throw new JsonException("Failed to deserialize QueryFingerprintValidationResult.");
         }
 
         /// <summary>
@@ -74,7 +70,7 @@ namespace EfCoreNPlusOneGuard
         /// <returns>True if deserialization succeeded, false otherwise.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty or whitespace.</exception>
-        public static bool TryFromJson(string json, out QueryFingerprintValidationResult? value)
+        public static bool TryFromValidationJson(string json, out QueryFingerprintValidationResult? value)
         {
             ArgumentException.ThrowIfNullOrEmpty(json);
 
@@ -88,37 +84,6 @@ namespace EfCoreNPlusOneGuard
                 value = null;
                 return false;
             }
-        }
-
-        /// <summary>
-        /// Represents the result of validating a <see cref="QueryFingerprint"/>.
-        /// </summary>
-        public sealed class QueryFingerprintValidationResult
-        {
-            /// <summary>
-            /// Gets the SHA256 hash of the normalized SQL.
-            /// </summary>
-            public string CommandTextHash { get; init; } = string.Empty;
-
-            /// <summary>
-            /// Gets the normalized SQL string.
-            /// </summary>
-            public string NormalizedSql { get; init; } = string.Empty;
-
-            /// <summary>
-            /// Gets the call site information.
-            /// </summary>
-            public string CallSite { get; init; } = string.Empty;
-
-            /// <summary>
-            /// Gets a value indicating whether the fingerprint is valid.
-            /// </summary>
-            public bool IsValid { get; init; }
-
-            /// <summary>
-            /// Gets the validation error messages, if any.
-            /// </summary>
-            public string[] ValidationErrors { get; init; } = Array.Empty<string>();
         }
     }
 }

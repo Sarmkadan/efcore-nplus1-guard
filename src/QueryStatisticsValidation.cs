@@ -10,23 +10,25 @@ namespace EfCoreNPlusOneGuard
     public static class QueryStatisticsValidation
     {
         /// <summary>
-        /// Validates a <see cref="QueryStatistics"/> instance.
+        /// Validates a <see cref="QueryStatistics"/> instance and returns a validation result.
         /// </summary>
         /// <param name="value">The query statistics instance to validate.</param>
-        /// <returns>An empty list if the statistics are valid; otherwise, a list of validation error messages.</returns>
+        /// <returns>A validation result indicating success or failure with error messages.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
-        public static IReadOnlyList<string> Validate(this QueryStatistics? value)
+        public static QueryFingerprintValidationResult Validate(this QueryStatistics? value)
         {
             ArgumentNullException.ThrowIfNull(value);
             var errors = new List<string>();
 
-    // QueryStatistics itself maintains valid internal state, so we only need to validate entries
-    foreach (var entry in value.TopByCount(int.MaxValue))
-    {
-        errors.AddRange(entry.Validate());
-    }
+            // QueryStatistics itself maintains valid internal state, so we only need to validate entries
+            foreach (var entry in value.TopByCount(int.MaxValue))
+            {
+                errors.AddRange(entry.Validate().ValidationErrors);
+            }
 
-    return errors;
+            return errors.Count == 0
+                ? QueryFingerprintValidationResult.Success(string.Empty, string.Empty, string.Empty)
+                : QueryFingerprintValidationResult.Failure(string.Empty, string.Empty, string.Empty, errors.ToArray());
         }
 
         /// <summary>
@@ -35,7 +37,7 @@ namespace EfCoreNPlusOneGuard
         /// <param name="value">The query statistics instance to check.</param>
         /// <returns><see langword="true"/> if valid; otherwise, <see langword="false"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
-        public static bool IsValid(this QueryStatistics? value) => value != null && Validate(value).Count == 0;
+        public static bool IsValid(this QueryStatistics? value) => value != null && Validate(value).IsValid;
 
         /// <summary>
         /// Ensures that the specified <see cref="QueryStatistics"/> is valid, throwing an <see cref="ArgumentNullException"/> if it is null.
@@ -48,12 +50,12 @@ namespace EfCoreNPlusOneGuard
         }
 
         /// <summary>
-        /// Validates a <see cref="QueryStatistics.QueryStatEntry"/> instance and returns a list of human-readable problems.
+        /// Validates a <see cref="QueryStatistics.QueryStatEntry"/> instance and returns a validation result.
         /// </summary>
         /// <param name="value">The query stat entry to validate.</param>
-        /// <returns>An empty list if valid; otherwise, a list of validation error messages.</returns>
+        /// <returns>A validation result indicating success or failure with error messages.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
-        public static IReadOnlyList<string> Validate(this QueryStatistics.QueryStatEntry? value)
+        public static QueryFingerprintValidationResult Validate(this QueryStatistics.QueryStatEntry? value)
         {
             ArgumentNullException.ThrowIfNull(value);
 
@@ -71,7 +73,10 @@ namespace EfCoreNPlusOneGuard
             {
                 errors.Add("TotalDuration cannot be negative.");
             }
-            return errors;
+
+            return errors.Count == 0
+                ? QueryFingerprintValidationResult.Success(string.Empty, string.Empty, string.Empty)
+                : QueryFingerprintValidationResult.Failure(string.Empty, string.Empty, string.Empty, errors.ToArray());
         }
 
         /// <summary>
@@ -80,7 +85,7 @@ namespace EfCoreNPlusOneGuard
         /// <param name="value">The query stat entry to check.</param>
         /// <returns><see langword="true"/> if valid; otherwise, <see langword="false"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
-        public static bool IsValid(this QueryStatistics.QueryStatEntry? value) => value != null && Validate(value).Count == 0;
+        public static bool IsValid(this QueryStatistics.QueryStatEntry? value) => value != null && Validate(value).IsValid;
 
         /// <summary>
         /// Ensures that the specified <see cref="QueryStatistics.QueryStatEntry"/> is valid, throwing an <see cref="ArgumentNullException"/> if it is null or an <see cref="ArgumentException"/> if it is invalid.
@@ -92,11 +97,11 @@ namespace EfCoreNPlusOneGuard
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            var errors = Validate(value);
-            if (errors.Count > 0)
+            var result = Validate(value);
+            if (!result.IsValid)
             {
                 throw new ArgumentException(
-                    $"QueryStatEntry is invalid:{Environment.NewLine}{string.Join(Environment.NewLine, errors)}");
+                    $"QueryStatEntry is invalid:{Environment.NewLine}{string.Join(Environment.NewLine, result.ValidationErrors)}");
             }
         }
     }
