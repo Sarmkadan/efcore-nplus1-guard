@@ -14,33 +14,25 @@ namespace EfCoreNPlusOneGuard;
 /// incident type changes (e.g., the previous attempt that accessed a non‑existent
 /// <c>Fingerprint</c> property).
 /// </summary>
-public sealed class MarkdownIncidentReporter : IIncidentReporter
+public sealed class MarkdownIncidentReporter : FileBasedIncidentReporter
 {
-    private readonly string _filePath;
-    private readonly object _lock = new();
-
     /// <summary>
     /// Creates a new <see cref="MarkdownIncidentReporter"/>.
     /// </summary>
     /// <param name="filePath">Path to the Markdown output file.</param>
     public MarkdownIncidentReporter(string filePath)
+        : base(filePath, append: true)
     {
-        _filePath = filePath ?? throw new ArgumentNullException(nameof(filePath));
     }
 
     /// <summary>
-    /// Writes a markdown representation of the incident to the file.
+    /// Formats a single incident as Markdown content.
     /// </summary>
-    /// <param name="incident">The incident to report.</param>
-    public void Report(NPlusOneIncident incident)
+    /// <param name="incident">The incident to format.</param>
+    /// <returns>A Markdown-formatted string representing the incident.</returns>
+    protected override string FormatIncident(NPlusOneIncident incident)
     {
-        if (incident == null) throw new ArgumentNullException(nameof(incident));
-
-        lock (_lock)
-        {
-            var markdown = BuildMarkdownForIncident(incident);
-            File.AppendAllText(_filePath, markdown);
-        }
+        return BuildMarkdownForIncident(incident);
     }
 
     private static string BuildMarkdownForIncident(NPlusOneIncident incident)
@@ -54,16 +46,16 @@ public sealed class MarkdownIncidentReporter : IIncidentReporter
         sb.AppendLine("| Fingerprint | Count | Severity |");
         sb.AppendLine("|---|---|---|");
         sb.AppendLine($"| {EscapePipe(GetPropertyValue(incident, "SqlQuery") ?? "N/A")} " +
-              $"| {GetPropertyValue(incident, "Count") ?? "N/A"} " +
-              $"| {GetPropertyValue(incident, "Severity") ?? "N/A"} |");
+                      $"| {GetPropertyValue(incident, "Count") ?? "N/A"} " +
+                      $"| {GetPropertyValue(incident, "Severity") ?? "N/A"} |");
         sb.AppendLine();
 
         // Details – raw SQL
         sb.AppendLine("### SQL");
         sb.AppendLine("```sql");
         sb.AppendLine(GetPropertyValue(incident, "CommandText") ??
-        GetPropertyValue(incident, "Sql") ??
-        "N/A");
+                     GetPropertyValue(incident, "Sql") ??
+                     "N/A");
         sb.AppendLine("```");
         sb.AppendLine();
 

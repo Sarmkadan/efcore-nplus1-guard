@@ -5,31 +5,25 @@ namespace EfCoreNPlusOneGuard;
 /// <summary>
 /// Reports N+1 query incidents to a JSON Lines file.
 /// </summary>
-public sealed class JsonIncidentReporter : IIncidentReporter
+public sealed class JsonIncidentReporter : FileBasedIncidentReporter
 {
-    private readonly string _filePath;
-    private readonly object _lock = new();
-
     /// <summary>
     /// Initializes a new instance of the <see cref="JsonIncidentReporter"/> class.
     /// </summary>
     /// <param name="filePath">Path to the JSON Lines output file.</param>
     public JsonIncidentReporter(string filePath)
+        : base(filePath, append: true)
     {
-        _filePath = filePath ?? throw new ArgumentNullException(nameof(filePath));
     }
 
     /// <summary>
-    /// Reports an N+1 query incident.
+    /// Formats a single incident as JSON.
     /// </summary>
-    /// <param name="incident">The incident to report.</param>
-    public void Report(NPlusOneIncident incident)
+    /// <param name="incident">The incident to format.</param>
+    /// <returns>A JSON-formatted string representing the incident.</returns>
+    protected override string FormatIncident(NPlusOneIncident incident)
     {
-        lock (_lock)
-        {
-            var json = Serialize(incident);
-            File.AppendAllText(_filePath, json + "\n");
-        }
+        return Serialize(incident);
     }
 
     /// <summary>
