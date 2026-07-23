@@ -308,3 +308,61 @@ if (QueryFingerprintValidationJsonExtensions.TryFromJson(json, out var parsedRes
     Console.WriteLine("Successfully parsed validation result with TryFromJson.");
 }
 ```
+
+## Failing tests on N+1 (test-assertion mode)
+
+The most valuable place to catch an N+1 pattern is in CI, before it ships - not in a production
+dashboard. `InMemoryIncidentReporter` collects incidents in-memory (thread-safe, `AsyncLocal`-scoped)
+and `QueryTrackerExtensions.AssertNoNPlusOne` wraps a piece of code under test, failing with an
+`NPlusOneDetectedException` whose message lists every offending fingerprint if any N+1 was detected.
+
+First, wire your `DbContext` so the `onDetected` callback forwards into the ambient reporter:
+
+```csharp
+services.AddDbContext<AppDbContext>(options =>
+    options
+        .UseSqlServer(connectionString)
+        .UseNPlusOneGuard(
+            configure: o => o.Threshold = 3,
+            onDetected: incident => InMemoryIncidentReporter.Current?.Report(incident)));
+```
+
+Then, in an xUnit test, wrap the repository call under test in `AssertNoNPlusOne`:
+
+```csharp
+using EfCoreNPlusOneGuard;
+using Xunit;
+
+public class OrderRepositoryTests
+{
+    [Fact]
+    public void GetOrdersWithCustomers_DoesNotTriggerNPlusOne()
+    {
+        using var context = CreateContext();
+        var repository = new OrderRepository(context);
+
+        context.AssertNoNPlusOne(() =>
+        {
+            var orders = repository.GetOrdersWithCustomers();
+            foreach (var order in orders)
+            {
+                _ = order.Customer.Name; // would N+1 if Customer isn't eagerly loaded
+            }
+        });
+    }
+}
+```
+
+If `GetOrdersWithCustomers` lazily loads `Customer` per order, the test fails with a message like:
+
+```
+EfCoreNPlusOneGuard.NPlusOneDetectedException : N+1 query pattern(s) detected while asserting no N+1 (1 distinct offender(s)):
+
+  fingerprint: 9F3C21A0
+  count:       12
+  sql:         select * from customers where id = ?
+  call site:   GetOrdersWithCustomers at OrderRepository.cs:42
+```
+
+An `IServiceProvider` overload is also available for tests that resolve their `DbContext` from a
+DI container: `serviceProvider.AssertNoNPlusOne(() => { ... })`.

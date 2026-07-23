@@ -26,4 +26,21 @@ public sealed class NPlusOneDetectedException : InvalidOperationException
     {
         Incident = incident;
     }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NPlusOneDetectedException"/> class with a
+    /// custom message, e.g. one that aggregates several incidents for a test-assertion failure.
+    /// </summary>
+    /// <param name="incident">The representative incident that caused this exception.</param>
+    /// <param name="message">The exception message.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="incident"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="message"/> is <see langword="null"/> or empty.</exception>
+    public NPlusOneDetectedException(NPlusOneIncident incident, string message)
+        : base(message)
+    {
+        ArgumentNullException.ThrowIfNull(incident);
+        ArgumentException.ThrowIfNullOrEmpty(message);
+
+        Incident = incident;
+    }
 }
