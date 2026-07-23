@@ -17,7 +17,7 @@ namespace EfCoreNPlusOneGuard.Tests
             // Create a unique temporary file for each test run.
             _tempFilePath = Path.GetTempFileName();
 
-            // The reporter appends to the file, so we start with an empty file.
+            // Ensure the file starts empty.
             File.WriteAllText(_tempFilePath, string.Empty);
 
             // Use NullLogger to avoid needing a real logger.
@@ -30,7 +30,7 @@ namespace EfCoreNPlusOneGuard.Tests
 
         public void Dispose()
         {
-            // Ensure the reporter is disposed (flushes any pending writes) and delete the temp file.
+            // Dispose the reporter (flushes any pending writes) and delete the temp file.
             _reporter.Dispose();
             if (File.Exists(_tempFilePath))
             {
@@ -38,11 +38,17 @@ namespace EfCoreNPlusOneGuard.Tests
             }
         }
 
+        /// <summary>
+        /// Creates a minimal, non‑null <see cref="NPlusOneIncident"/> instance.
+        /// The concrete type may not have a public parameterless constructor, so we
+        /// obtain an instance via deserialization of an empty JSON object.
+        /// </summary>
         private static NPlusOneIncident CreateSampleIncident()
         {
-            // Most NPlusOneIncident implementations expose a parameter‑less constructor.
-            // If the real type requires arguments, this method can be adjusted accordingly.
-            return Activator.CreateInstance<NPlusOneIncident>();
+            // "{}" will deserialize to an instance with default property values.
+            var incident = JsonSerializer.Deserialize<NPlusOneIncident>("{}");
+            // The deserialization should never return null for a reference type.
+            return incident ?? throw new InvalidOperationException("Failed to create sample incident.");
         }
 
         [Fact]
