@@ -2,6 +2,7 @@
 using System;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace EfCoreNPlusOneGuard
@@ -26,7 +27,8 @@ namespace EfCoreNPlusOneGuard
         /// </summary>
         public string CallSite { get; }
 
-        private QueryFingerprint(string commandTextHash, string normalizedSql, string callSite)
+        [JsonConstructor]
+private QueryFingerprint(string commandTextHash, string normalizedSql, string callSite)
         {
             ArgumentNullException.ThrowIfNull(commandTextHash);
             ArgumentNullException.ThrowIfNull(normalizedSql);
