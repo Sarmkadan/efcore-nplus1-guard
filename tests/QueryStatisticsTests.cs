@@ -99,7 +99,8 @@ namespace EfCoreNPlusOneGuard.Tests
                 count: 4,
                 totalDuration: TimeSpan.FromMilliseconds(40));
 
-            Assert.Equal("SELECT * FROM TEST", entry.Sql); // normalized to upper‑case by QueryStatistics
+            // QueryStatEntry stores the raw SQL as provided; it does not normalize.
+            Assert.Equal("SELECT * FROM Test", entry.Sql);
             Assert.Equal(4, entry.Count);
             Assert.Equal(TimeSpan.FromMilliseconds(40), entry.TotalDuration);
             Assert.Equal(TimeSpan.FromMilliseconds(10), entry.AvgDuration);
