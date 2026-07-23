@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace EfCoreNPlusOneGuard;
 
@@ -11,8 +12,17 @@ public sealed class JsonIncidentReporter : FileBasedIncidentReporter
     /// Initializes a new instance of the <see cref="JsonIncidentReporter"/> class.
     /// </summary>
     /// <param name="filePath">Path to the JSON Lines output file.</param>
-    public JsonIncidentReporter(string filePath)
-        : base(filePath, append: true)
+    /// <param name="options">
+    /// Optional guard options used to configure the reporter's failure degradation mode.
+    /// </param>
+    /// <param name="logger">Optional logger for rate-limited write-failure warnings.</param>
+    /// <param name="aggregator">Optional aggregator whose dropped-incident metric is updated on write failure.</param>
+    public JsonIncidentReporter(
+        string filePath,
+        NPlusOneGuardOptions? options = null,
+        ILogger? logger = null,
+        IncidentAggregator? aggregator = null)
+        : base(filePath, append: true, options, logger, aggregator)
     {
     }
 

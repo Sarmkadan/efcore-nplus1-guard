@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace EfCoreNPlusOneGuard;
 
@@ -25,6 +26,26 @@ public sealed class IncidentAggregator
     // LRU cache tracking
     private readonly LinkedList<string> _lruList = new();
     private readonly object _lruLock = new();
+
+    // Count of incidents that a reporter could not persist after exhausting its retries.
+    private int _droppedIncidents;
+
+    /// <summary>
+    /// Gets the number of incidents that a reporter failed to persist after exhausting
+    /// its write retries (e.g. due to a locked file, permission errors, or a full disk)
+    /// and had to drop instead of taking down the observed application.
+    /// </summary>
+    /// <value>The total count of dropped incidents observed so far.</value>
+    public int DroppedIncidents => Volatile.Read(ref _droppedIncidents);
+
+    /// <summary>
+    /// Records that a reporter dropped an incident because it could not be persisted
+    /// after exhausting its write retries. Safe to call from any thread.
+    /// </summary>
+    public void RecordDroppedIncident()
+    {
+        Interlocked.Increment(ref _droppedIncidents);
+    }
 
     /// <summary>
     /// Represents a fingerprint offender with its occurrence count and the last time it was seen.

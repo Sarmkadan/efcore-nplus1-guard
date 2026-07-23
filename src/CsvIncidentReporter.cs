@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace EfCoreNPlusOneGuard;
 
@@ -19,8 +20,18 @@ public sealed class CsvIncidentReporter : FileBasedIncidentReporter
     /// entries are appended. When <see langword="false"/>, the file is truncated the first time
     /// this instance writes to it, then subsequent writes append.
     /// </param>
-    public CsvIncidentReporter(string filePath, bool append = true)
-        : base(filePath, append)
+    /// <param name="options">
+    /// Optional guard options used to configure the reporter's failure degradation mode.
+    /// </param>
+    /// <param name="logger">Optional logger for rate-limited write-failure warnings.</param>
+    /// <param name="aggregator">Optional aggregator whose dropped-incident metric is updated on write failure.</param>
+    public CsvIncidentReporter(
+        string filePath,
+        bool append = true,
+        NPlusOneGuardOptions? options = null,
+        ILogger? logger = null,
+        IncidentAggregator? aggregator = null)
+        : base(filePath, append, options, logger, aggregator)
     {
     }
 

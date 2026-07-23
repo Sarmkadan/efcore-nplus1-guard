@@ -3,18 +3,37 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace EfCoreNPlusOneGuard;
 
 /// <summary>
 /// Abstract base class for file-based incident reporters that write N+1 incidents to files.
-/// Provides common functionality for path resolution, thread-safe writing, and resource management.
+/// Provides common functionality for path resolution, thread-safe writing, retrying transient
+/// IO failures, graceful degradation, and resource management.
 /// </summary>
 public abstract class FileBasedIncidentReporter : IIncidentReporter, IDisposable, IAsyncDisposable
 {
+    /// <summary>
+    /// Backoff delays applied between write retries. A locked file (log shipper, antivirus)
+    /// or a transient disk issue is retried up to this many times before the write is
+    /// considered failed.
+    /// </summary>
+    private static readonly TimeSpan[] RetryDelays =
+    [
+        TimeSpan.FromMilliseconds(50),
+        TimeSpan.FromMilliseconds(100),
+        TimeSpan.FromMilliseconds(200),
+    ];
+
     private readonly string _filePath;
     private readonly bool _append;
     private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
+    private readonly ReporterFailureMode _failureMode;
+    private readonly TimeSpan _failureLogInterval;
+    private readonly ILogger? _logger;
+    private readonly IncidentAggregator? _aggregator;
+    private long _lastFailureWarningTicksUtc;
     private bool _fileInitialized;
     private bool _disposed;
     private static readonly System.Text.UTF8Encoding _encoding = new System.Text.UTF8Encoding(false);
@@ -38,10 +57,35 @@ public abstract class FileBasedIncidentReporter : IIncidentReporter, IDisposable
     /// entries are appended. When <see langword="false"/>, the file is truncated the first time
     /// this instance writes to it, then subsequent writes append.
     /// </param>
-    protected FileBasedIncidentReporter(string filePath, bool append = true)
+    /// <param name="options">
+    /// Optional guard options used to configure <see cref="ReporterFailureMode"/> and the
+    /// rate-limited warning interval. When <see langword="null"/>, the reporter falls back to
+    /// <see cref="ReporterFailureMode.LogOnce"/> with a 5 minute warning interval.
+    /// </param>
+    /// <param name="logger">
+    /// Optional logger used to emit a rate-limited warning when writes keep failing under
+    /// <see cref="ReporterFailureMode.LogOnce"/>. When <see langword="null"/>, no warning is logged.
+    /// </param>
+    /// <param name="aggregator">
+    /// Optional aggregator whose <see cref="IncidentAggregator.DroppedIncidents"/> metric is
+    /// incremented every time an incident cannot be persisted after exhausting retries.
+    /// </param>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="filePath"/> is null or empty.</exception>
+    protected FileBasedIncidentReporter(
+        string filePath,
+        bool append = true,
+        NPlusOneGuardOptions? options = null,
+        ILogger? logger = null,
+        IncidentAggregator? aggregator = null)
     {
-        _filePath = filePath ?? throw new ArgumentNullException(nameof(filePath));
+        ArgumentException.ThrowIfNullOrEmpty(filePath);
+
+        _filePath = filePath;
         _append = append;
+        _failureMode = options?.ReporterFailureMode ?? ReporterFailureMode.LogOnce;
+        _failureLogInterval = options?.ReporterFailureLogInterval ?? TimeSpan.FromMinutes(5);
+        _logger = logger;
+        _aggregator = aggregator;
     }
 
     /// <summary>
@@ -146,24 +190,131 @@ public abstract class FileBasedIncidentReporter : IIncidentReporter, IDisposable
     /// lifetime and subsequently appended to; when <see langword="true"/>, existing content
     /// is always preserved. Must be called while holding the write lock.
     /// </summary>
+    /// <remarks>
+    /// Transient <see cref="IOException"/>s (e.g. the file is momentarily locked by a log
+    /// shipper or antivirus) are retried with a short backoff. If the write still fails - be
+    /// it an <see cref="IOException"/> after exhausting retries, an
+    /// <see cref="UnauthorizedAccessException"/>, or a disk-full condition - the failure is
+    /// handled according to the configured <see cref="ReporterFailureMode"/> instead of
+    /// propagating and taking down the observed application.
+    /// </remarks>
     /// <param name="lines">The lines to write.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="lines"/> is null.</exception>
     protected async Task WriteLinesAsync(IReadOnlyCollection<string> lines)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+
+        try
+        {
+            await WriteLinesWithRetryAsync(lines).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            HandleWriteFailure(ex);
+        }
+    }
+
+    /// <summary>
+    /// Attempts to write the given lines to the file, retrying on <see cref="IOException"/>
+    /// (e.g. a file locked by a log shipper or antivirus) with a short exponential-ish backoff.
+    /// <see cref="UnauthorizedAccessException"/> is not retried, since a permission failure
+    /// will not resolve itself within a few hundred milliseconds.
+    /// </summary>
+    /// <param name="lines">The lines to write.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    private async Task WriteLinesWithRetryAsync(IReadOnlyCollection<string> lines)
     {
         var truncate = !_append && !_fileInitialized;
 
-        if (truncate)
+        for (var attempt = 0; ; attempt++)
         {
-            // Write header and first data line
-            var header = GetHeader();
-            await File.WriteAllLinesAsync(_filePath, header.Concat(lines), _encoding).ConfigureAwait(false);
+            try
+            {
+                if (truncate)
+                {
+                    // Write header and first data line
+                    var header = GetHeader();
+                    await File.WriteAllLinesAsync(_filePath, header.Concat(lines), _encoding).ConfigureAwait(false);
+                }
+                else
+                {
+                    await File.AppendAllLinesAsync(_filePath, lines, _encoding).ConfigureAwait(false);
+                }
+
+                _fileInitialized = true;
+                return;
+            }
+            catch (IOException) when (attempt < RetryDelays.Length)
+            {
+                await Task.Delay(RetryDelays[attempt]).ConfigureAwait(false);
+            }
         }
-        else
+    }
+
+    /// <summary>
+    /// Handles a write failure that survived retries by degrading gracefully according to the
+    /// configured <see cref="ReporterFailureMode"/>: the drop is always counted on the
+    /// aggregator (when one was supplied), and depending on the mode the failure is either
+    /// swallowed silently, swallowed with a rate-limited warning log, or rethrown.
+    /// </summary>
+    /// <param name="exception">The exception that caused the write to fail.</param>
+    /// <exception cref="IOException">
+    /// Rethrown when <see cref="ReporterFailureMode"/> is <see cref="ReporterFailureMode.Throw"/>
+    /// and the original failure was an <see cref="IOException"/>.
+    /// </exception>
+    /// <exception cref="UnauthorizedAccessException">
+    /// Rethrown when <see cref="ReporterFailureMode"/> is <see cref="ReporterFailureMode.Throw"/>
+    /// and the original failure was an <see cref="UnauthorizedAccessException"/>.
+    /// </exception>
+    private void HandleWriteFailure(Exception exception)
+    {
+        _aggregator?.RecordDroppedIncident();
+
+        switch (_failureMode)
         {
-            await File.AppendAllLinesAsync(_filePath, lines, _encoding).ConfigureAwait(false);
+            case ReporterFailureMode.Throw:
+                throw exception;
+            case ReporterFailureMode.Silent:
+                return;
+            case ReporterFailureMode.LogOnce:
+            default:
+                LogFailureRateLimited(exception);
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Logs a warning for a dropped incident at most once per <see cref="_failureLogInterval"/>,
+    /// so that a sustained outage produces one warning per interval instead of one per incident.
+    /// </summary>
+    /// <param name="exception">The exception that caused the write to fail.</param>
+    private void LogFailureRateLimited(Exception exception)
+    {
+        if (_logger is null)
+        {
+            return;
         }
 
-        _fileInitialized = true;
+        var nowTicks = DateTime.UtcNow.Ticks;
+        var lastTicks = Interlocked.Read(ref _lastFailureWarningTicksUtc);
+
+        if (nowTicks - lastTicks < _failureLogInterval.Ticks)
+        {
+            return;
+        }
+
+        if (Interlocked.CompareExchange(ref _lastFailureWarningTicksUtc, nowTicks, lastTicks) != lastTicks)
+        {
+            // Another thread just logged; skip to honor the rate limit.
+            return;
+        }
+
+        _logger.LogWarning(
+            exception,
+            "N+1 incident reporter failed to write to '{FilePath}' and is dropping incidents. Further failures are suppressed for {Interval}.",
+            _filePath,
+            _failureLogInterval);
     }
 
     /// <summary>
