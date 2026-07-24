@@ -1,2 +1,2 @@
 
-This file includes 10 test methods that cover the happy path, edge cases, and error paths for the `NPlusOneGuardOptions` class. Each test method is designed to test a specific aspect of the class, and the assertions are used to verify the expected behavior.
+This file includes 8 test methods that cover the happy path, edge cases, and error paths for the `DuplicateQueryDetectorValidation` class. Each test method is designed to test a specific aspect of the class, and the assertions are used to verify the expected behavior.
