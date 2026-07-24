@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
 using System.Data.Common;
 using System.Text.RegularExpressions;
 
@@ -12,6 +13,7 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
     private readonly NPlusOneGuardOptions _options;
     private readonly Action<NPlusOneIncident>? _onDetected;
     private readonly QueryTracker _tracker;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NPlusOneGuardInterceptor"/> class.
@@ -23,6 +25,13 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _onDetected = onDetected;
         _tracker = new QueryTracker(options);
+        _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<NPlusOneGuardInterceptor>.Instance;
+
+        // Log diagnostics for stale whitelist entries at startup
+        if (_options.CallSiteWhitelist is { } whitelist)
+        {
+            whitelist.LogStaleEntries(_logger);
+        }
     }
 
     /// <summary>
