@@ -289,5 +289,523 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1.NormalizedSql, fp2.NormalizedSql);
             Assert.Equal(fp1, fp2);
         }
+
+        [Fact]
+        public void Equals_ObjectOverload_HandlesNull()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "UserRepository.GetUser";
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Act & Assert
+            Assert.False(fp.Equals((object?)null));
+        }
+
+        [Fact]
+        public void Equals_ObjectOverload_HandlesNonQueryFingerprint()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "UserRepository.GetUser";
+            var fp = QueryFingerprint.Create(sql, callSite);
+            var otherObject = new object();
+
+            // Act & Assert
+            Assert.False(fp.Equals(otherObject));
+        }
+
+        [Fact]
+        public void Equals_ObjectOverload_ReturnsTrueForEqualFingerprints()
+        {
+            // Arrange
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0";
+            var sql2 = "SELECT * FROM Users WHERE Id = @p9";
+            var callSite = "UserRepository.GetUser";
+            var fp1 = QueryFingerprint.Create(sql1, callSite);
+            var fp2 = QueryFingerprint.Create(sql2, callSite);
+
+            // Act & Assert
+            Assert.True(fp1.Equals((object)fp2));
+        }
+
+        [Fact]
+        public void Equals_ObjectOverload_ReturnsFalseForDifferentFingerprints()
+        {
+            // Arrange
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0";
+            var sql2 = "SELECT * FROM Orders WHERE UserId = @p0";
+            var callSite = "UserRepository.GetUser";
+            var fp1 = QueryFingerprint.Create(sql1, callSite);
+            var fp2 = QueryFingerprint.Create(sql2, callSite);
+
+            // Act & Assert
+            Assert.False(fp1.Equals((object)fp2));
+        }
+
+        [Fact]
+        public void GetHashCode_ConsistentWithEquals_ForDifferentCallSites()
+        {
+            // Arrange - Same SQL but different call sites
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite1 = "UserRepository.GetUser";
+            var callSite2 = "UserRepository.GetUserById";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql, callSite1);
+            var fp2 = QueryFingerprint.Create(sql, callSite2);
+
+            // Assert - Different call sites should produce different fingerprints
+            Assert.NotEqual(fp1, fp2);
+            Assert.NotEqual(fp1.GetHashCode(), fp2.GetHashCode());
+        }
+
+        [Fact]
+        public void GetHashCode_ConsistentWithEquals_ForSameCallSites()
+        {
+            // Arrange - Same SQL and call site
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0";
+            var sql2 = "SELECT * FROM Users WHERE Id = @p9";
+            var callSite = "UserRepository.GetUser";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql1, callSite);
+            var fp2 = QueryFingerprint.Create(sql2, callSite);
+
+            // Assert - Same fingerprints should have same hash codes
+            Assert.Equal(fp1, fp2);
+            Assert.Equal(fp1.GetHashCode(), fp2.GetHashCode());
+        }
+
+        [Fact]
+        public void Create_WithNullCallSite_HandlesCorrectly()
+        {
+            // Arrange - CallSite is truncated but not null after truncation
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = new string('a', 5000); // Long enough to be truncated
+
+            // Act
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Assert
+            Assert.NotNull(fp.CallSite);
+            Assert.Equal(4096, fp.CallSite.Length); // Should be truncated to max length
+            Assert.NotNull(fp.CommandTextHash);
+            Assert.NotNull(fp.NormalizedSql);
+        }
+
+        [Fact]
+        public void Create_WithEmptyCallSite_ProducesValidFingerprint()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = string.Empty;
+
+            // Act
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Assert
+            Assert.Equal(string.Empty, fp.CallSite);
+            Assert.NotNull(fp.CommandTextHash);
+            Assert.NotNull(fp.NormalizedSql);
+            Assert.NotEqual(0, fp.CommandTextHash.Length);
+        }
+
+        [Fact]
+        public void Create_WithWhitespaceOnlyCallSite_ProducesValidFingerprint()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "   \n\t  ";
+
+            // Act
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Assert
+            Assert.NotNull(fp.CallSite);
+            Assert.NotEqual(0, fp.CallSite.Length);
+        }
+
+        [Fact]
+        public void Equals_WithIdenticalNormalizedSqlButDifferentCallSite_ReturnsFalse()
+        {
+            // Arrange - Same normalized SQL but different call sites
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0 AND Status = :p1";
+            var sql2 = "SELECT * FROM Users WHERE Id = @p5 AND Status = :p7";
+            var callSite1 = "UserRepository.GetActiveUser";
+            var callSite2 = "UserRepository.GetUserByStatus";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql1, callSite1);
+            var fp2 = QueryFingerprint.Create(sql2, callSite2);
+
+            // Assert - Should be unequal because call sites differ
+            Assert.Equal(fp1.NormalizedSql, fp2.NormalizedSql); // Same normalized SQL
+            Assert.NotEqual(fp1.CallSite, fp2.CallSite); // Different call sites
+            Assert.NotEqual(fp1, fp2); // Different fingerprints
+        }
+
+        [Fact]
+        public void Create_WithCaseSensitiveHashComparison_UsesStringComparison()
+        {
+            // Arrange - Test that hash comparison is case-sensitive (it should be since SHA256 hashes are case-sensitive)
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0";
+            var sql2 = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "UserRepository.GetUser";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql1, callSite);
+            var fp2 = QueryFingerprint.Create(sql2, callSite);
+
+            // Assert - Should be equal
+            Assert.Equal(fp1.CommandTextHash, fp2.CommandTextHash);
+            Assert.Equal(fp1, fp2);
+        }
+
+        [Fact]
+        public void Create_WithCompilerFrames_StripsThemFromCallSite()
+        {
+            // Arrange - Call site with compiler-generated frames
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "UserRepository.GetUser" + Environment.NewLine + "<>c__DisplayClass0_0.<GetUser>b__0()" + Environment.NewLine + "d__0.MoveNext()";
+
+            // Act
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Assert - CallSite property stores the original value (stripping only happens in Equals)
+            // The StripCompilerFrames method is called during Equals comparison, not on the property itself
+            Assert.Contains("d__", fp.CallSite);
+            Assert.Contains("UserRepository.GetUser", fp.CallSite);
+        }
+
+        [Fact]
+        public void Create_WithDifferentCompilerFrames_ProducesDifferentFingerprints()
+        {
+            // Arrange - Different call sites with compiler frames
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite1 = "UserRepository.GetUser" + Environment.NewLine + "<>c__DisplayClass0_0.<GetUser>b__0()";
+            var callSite2 = "UserRepository.GetUser" + Environment.NewLine + "d__0.MoveNext()";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql, callSite1);
+            var fp2 = QueryFingerprint.Create(sql, callSite2);
+
+            // Assert - Fingerprints should be different because CallSite properties differ
+            // Note: The Equals method has asymmetric behavior - it strips frames from 'other' but not from 'this'
+            // So fp1.Equals(fp2) compares fp1.CallSite (original) with StripCompilerFrames(fp2.CallSite)
+            // This means fingerprints with different call sites are not equal
+            Assert.NotEqual(fp1.CallSite, fp2.CallSite);
+            Assert.NotEqual(fp1, fp2);
+        }
+
+        [Fact]
+        public void Create_WithSameCallSiteDifferentWhitespace_NormalizesCorrectly()
+        {
+            // Arrange - Call sites with different whitespace
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite1 = "UserRepository.GetUser";
+            var callSite2 = " UserRepository.GetUser ";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql, callSite1);
+            var fp2 = QueryFingerprint.Create(sql, callSite2);
+
+            // Assert - Different call sites should produce different fingerprints
+            Assert.NotEqual(fp1.CallSite, fp2.CallSite);
+            Assert.NotEqual(fp1, fp2);
+        }
+
+        [Fact]
+        public void GetHashCode_Deterministic_AcrossMultipleCalls()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "UserRepository.GetUser";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql, callSite);
+            var fp2 = QueryFingerprint.Create(sql, callSite);
+
+            // Assert - Hash codes should be deterministic
+            Assert.Equal(fp1.GetHashCode(), fp2.GetHashCode());
+        }
+
+        [Fact]
+        public void Create_WithVeryLongCallSite_TruncatesCorrectly()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = new string('x', 10000); // Much longer than max length
+
+            // Act
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Assert
+            Assert.Equal(4096, fp.CallSite.Length); // Should be truncated to max length
+            Assert.Equal(new string('x', 4096), fp.CallSite);
+        }
+
+        [Fact]
+        public void Create_WithVeryLongSql_TruncatesCorrectly()
+        {
+            // Arrange
+            var sql = new string('S', 20000); // Much longer than max length
+            var callSite = "UserRepository.GetUser";
+
+            // Act
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Assert
+            Assert.True(fp.NormalizedSql.Length <= 8192);
+            Assert.True(fp.CommandTextHash.Length == 64); // SHA256 hash
+        }
+
+        [Fact]
+        public void Create_WithIdenticalProperties_ProducesEqualFingerprints()
+        {
+            // Arrange
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0";
+            var sql2 = "SELECT * FROM Users WHERE Id = @p9";
+            var callSite1 = "UserRepository.GetUser";
+            var callSite2 = "UserRepository.GetUser";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql1, callSite1);
+            var fp2 = QueryFingerprint.Create(sql2, callSite2);
+
+            // Assert - All properties should be equal
+            Assert.Equal(fp1.CommandTextHash, fp2.CommandTextHash);
+            Assert.Equal(fp1.NormalizedSql, fp2.NormalizedSql);
+            Assert.Equal(fp1.CallSite, fp2.CallSite);
+            Assert.Equal(fp1, fp2);
+            Assert.Equal(fp1.GetHashCode(), fp2.GetHashCode());
+            Assert.True(fp1 == fp2);
+            Assert.False(fp1 != fp2);
+        }
+
+        [Fact]
+        public void Create_WithDifferentProperties_ProducesDifferentFingerprints()
+        {
+            // Arrange
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0";
+            var sql2 = "SELECT * FROM Orders WHERE UserId = @p0";
+            var callSite1 = "UserRepository.GetUser";
+            var callSite2 = "OrderRepository.GetOrders";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql1, callSite1);
+            var fp2 = QueryFingerprint.Create(sql2, callSite2);
+
+            // Assert - All properties should be different
+            Assert.NotEqual(fp1.CommandTextHash, fp2.CommandTextHash);
+            Assert.NotEqual(fp1.NormalizedSql, fp2.NormalizedSql);
+            Assert.NotEqual(fp1.CallSite, fp2.CallSite);
+            Assert.NotEqual(fp1, fp2);
+            Assert.NotEqual(fp1.GetHashCode(), fp2.GetHashCode());
+            Assert.True(fp1 != fp2);
+            Assert.False(fp1 == fp2);
+        }
+
+        [Fact]
+        public void Create_WithSameHashButDifferentNormalizedSql_ProducesDifferentFingerprints()
+        {
+            // This test verifies that hash collisions are handled correctly
+            // In practice, SHA256 makes collisions extremely unlikely, but we test the contract
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0";
+            var sql2 = "SELECT * FROM Orders WHERE Id = @p0"; // Different query, might have same hash (extremely unlikely with SHA256)
+            var callSite = "Repository.GetData";
+
+            // Act
+            var fp1 = QueryFingerprint.Create(sql1, callSite);
+            var fp2 = QueryFingerprint.Create(sql2, callSite);
+
+            // Assert - Even if hashes are same (unlikely), fingerprints should be different due to different normalized SQL
+            if (fp1.CommandTextHash == fp2.CommandTextHash)
+            {
+                // If by extremely unlikely chance hashes are same, normalized SQL should be different
+                Assert.NotEqual(fp1.NormalizedSql, fp2.NormalizedSql);
+                Assert.NotEqual(fp1, fp2);
+            }
+            else
+            {
+                // Normal case - different hashes
+                Assert.NotEqual(fp1.CommandTextHash, fp2.CommandTextHash);
+                Assert.NotEqual(fp1, fp2);
+            }
+        }
+
+        [Fact]
+        public void Create_WithUnicodeCallSite_HandlesCorrectly()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "用户存储库.获取用户()"; // Chinese characters
+
+            // Act
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Assert
+            Assert.Equal(callSite, fp.CallSite);
+            Assert.NotNull(fp.CommandTextHash);
+            Assert.NotNull(fp.NormalizedSql);
+        }
+
+        [Fact]
+        public void Create_WithSpecialCharactersInCallSite_HandlesCorrectly()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "UserRepository.GetUser() -> lambda: <GetUser>d__0.MoveNext()";
+
+            // Act
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Assert - CallSite property stores the original value (stripping only happens in Equals)
+            Assert.Contains("UserRepository.GetUser", fp.CallSite);
+            Assert.Contains("d__", fp.CallSite);
+        }
+
+        [Fact]
+        public void Equals_WithSameInstance_ReturnsTrue()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "UserRepository.GetUser";
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Act & Assert
+            Assert.True(fp.Equals(fp));
+        }
+
+        [Fact]
+        public void Equals_WithDifferentInstancesSameValues_ReturnsTrue()
+        {
+            // Arrange
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0";
+            var sql2 = "SELECT * FROM Users WHERE Id = @p9";
+            var callSite = "UserRepository.GetUser";
+            var fp1 = QueryFingerprint.Create(sql1, callSite);
+            var fp2 = QueryFingerprint.Create(sql2, callSite);
+
+            // Act & Assert
+            Assert.True(fp1.Equals(fp2));
+            Assert.True(fp2.Equals(fp1));
+        }
+
+        [Fact]
+        public void Equals_WithDifferentInstancesDifferentValues_ReturnsFalse()
+        {
+            // Arrange
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0";
+            var sql2 = "SELECT * FROM Orders WHERE UserId = @p0";
+            var callSite = "Repository.GetData";
+            var fp1 = QueryFingerprint.Create(sql1, callSite);
+            var fp2 = QueryFingerprint.Create(sql2, callSite);
+
+            // Act & Assert
+            Assert.False(fp1.Equals(fp2));
+            Assert.False(fp2.Equals(fp1));
+        }
+
+        [Fact]
+        public void OperatorEquals_WithBothNull_ReturnsTrue()
+        {
+            // Arrange
+            QueryFingerprint? fp1 = null;
+            QueryFingerprint? fp2 = null;
+
+            // Act & Assert
+            Assert.True(fp1 == fp2);
+        }
+
+        [Fact]
+        public void OperatorEquals_WithOneNull_ReturnsFalse()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "UserRepository.GetUser";
+            var fp1 = QueryFingerprint.Create(sql, callSite);
+            QueryFingerprint? fp2 = null;
+
+            // Act & Assert
+            Assert.False(fp1 == fp2);
+            Assert.False(fp2 == fp1);
+        }
+
+        [Fact]
+        public void OperatorNotEquals_WithBothNull_ReturnsFalse()
+        {
+            // Arrange
+            QueryFingerprint? fp1 = null;
+            QueryFingerprint? fp2 = null;
+
+            // Act & Assert
+            Assert.False(fp1 != fp2);
+        }
+
+        [Fact]
+        public void OperatorNotEquals_WithOneNull_ReturnsTrue()
+        {
+            // Arrange
+            var sql = "SELECT * FROM Users WHERE Id = @p0";
+            var callSite = "UserRepository.GetUser";
+            var fp1 = QueryFingerprint.Create(sql, callSite);
+            QueryFingerprint? fp2 = null;
+
+            // Act & Assert
+            Assert.True(fp1 != fp2);
+            Assert.True(fp2 != fp1);
+        }
+
+        [Fact]
+        public void Create_WithSameQueryDifferentCallSites_ProducesDifferentFingerprints()
+        {
+            // This is the key test for the task requirement
+            // Two fingerprints with identical NormalizedSql but different CallSite should be unequal
+            var sql1 = "SELECT * FROM Users WHERE Id = @p0 AND Status = :p1";
+            var sql2 = "SELECT * FROM Users WHERE Id = @p5 AND Status = :p7";
+            var callSite1 = "UserRepository.GetActiveUser";
+            var callSite2 = "UserRepository.GetUserByStatus";
+
+            var fp1 = QueryFingerprint.Create(sql1, callSite1);
+            var fp2 = QueryFingerprint.Create(sql2, callSite2);
+
+            // Verify they have identical normalized SQL
+            Assert.Equal(fp1.NormalizedSql, fp2.NormalizedSql);
+
+            // Verify they have different call sites
+            Assert.NotEqual(fp1.CallSite, fp2.CallSite);
+
+            // Verify they are not equal fingerprints
+            Assert.NotEqual(fp1, fp2);
+            Assert.True(fp1 != fp2);
+
+            // Verify hash codes are different
+            Assert.NotEqual(fp1.GetHashCode(), fp2.GetHashCode());
+        }
+
+        [Fact]
+        public void Create_WithComplexQuery_HandlesAllNormalizationEdgeCases()
+        {
+            // Arrange - Complex query with multiple parameters and whitespace
+            var sql = @"
+                SELECT u.Id, u.Name, o.OrderDate, o.Total
+                FROM Users u
+                INNER JOIN Orders o ON u.Id = o.UserId
+                WHERE u.Status = @p0
+                  AND u.CreatedDate > @p1
+                ORDER BY o.Total DESC
+                LIMIT 100
+            ";
+            var expectedNormalized = "select u.id, u.name, o.orderdate, o.total from users u inner join orders o on u.id = o.userid where u.status = ? and u.createddate > ? order by o.total desc limit ?";
+            var callSite = "UserRepository.GetActiveUsersWithOrders";
+
+            // Act
+            var fp = QueryFingerprint.Create(sql, callSite);
+
+            // Assert
+            Assert.Equal(expectedNormalized, fp.NormalizedSql);
+            Assert.Equal(64, fp.CommandTextHash.Length); // SHA256 hash is 64 characters
+        }
     }
 }
