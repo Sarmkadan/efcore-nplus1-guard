@@ -50,11 +50,51 @@ private QueryFingerprint(string commandTextHash, string normalizedSql, string ca
             ArgumentNullException.ThrowIfNull(commandText);
             ArgumentNullException.ThrowIfNull(callSite);
 
+    // Apply length limits to prevent excessive memory allocation and DoS via unbounded strings
+    commandText = TruncateSql(commandText);
+    callSite = TruncateCallSite(callSite);
+
             var normalized = NormalizeSql(commandText);
             var hash = ComputeSha256Hash(normalized);
 
             return new QueryFingerprint(hash, normalized, callSite);
         }
+
+    /// <summary>
+    /// Truncates SQL command text to prevent excessive memory allocation during normalization.
+    /// </summary>
+    /// <param name="sql">The SQL command text to truncate.</param>
+    /// <returns>The truncated SQL command text, or the original if within limits.</returns>
+    private static string TruncateSql(string sql)
+    {
+        const int maxLength = 8192; // 8KB
+        if (sql.Length <= maxLength)
+        {
+            return sql;
+        }
+        
+        // Truncate to maxLength, preserving the end of the query which typically contains
+        // the most relevant information (WHERE clause, ORDER BY, etc.)
+        return sql.Substring(sql.Length - maxLength);
+    }
+
+    /// <summary>
+    /// Truncates call site information to prevent excessive memory allocation.
+    /// </summary>
+    /// <param name="callSite">The call site information to truncate.</param>
+    /// <returns>The truncated call site information, or the original if within limits.</returns>
+    private static string TruncateCallSite(string callSite)
+    {
+        const int maxLength = 4096; // 4KB
+        if (callSite.Length <= maxLength)
+        {
+            return callSite;
+        }
+        
+        // Truncate to maxLength, preserving the end which typically contains the most
+        // relevant method name and file information
+        return callSite.Substring(callSite.Length - maxLength);
+    }
 
         /// <summary>
         /// Normalizes SQL by removing literals/parameters, collapsing whitespace, and converting to lower case.

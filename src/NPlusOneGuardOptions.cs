@@ -87,6 +87,22 @@ public class NPlusOneGuardOptions
     /// </summary>
     public int MaxStackFrames { get; set; } = int.MaxValue;
 
+/// <summary>
+/// Maximum allowed length for SQL command text in bytes. Queries exceeding this limit
+/// will be truncated to prevent excessive memory allocation during normalization and hashing.
+/// Defaults to 8KB (8192 bytes), which is sufficient for most SQL queries while preventing
+/// denial-of-service via extremely large queries.
+/// </summary>
+public int MaxSqlLength { get; set; } = 8192;
+
+/// <summary>
+/// Maximum allowed length for call site information in characters. Call sites exceeding this limit
+/// will be truncated to prevent excessive memory allocation during fingerprint creation.
+/// Defaults to 4KB (4096 characters), which is sufficient for most stack traces while preventing
+/// denial-of-service via extremely large call site strings.
+/// </summary>
+public int MaxCallSiteLength { get; set; } = 4096;
+
     /// <summary>
     /// Controls how file-based reporters behave when they exhaust their write retries
     /// (e.g. the file is locked by a log shipper or antivirus, permissions were revoked,
