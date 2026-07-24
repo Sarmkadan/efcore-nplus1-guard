@@ -93,26 +93,39 @@ namespace EfCoreNPlusOneGuard
                 foreach (var element in doc.RootElement.EnumerateArray())
                 {
                     var type = element.GetProperty("type").GetString();
-                    if (type == "exact")
-                    {
-                        var typeName = element.GetProperty("typeName").GetString();
-                        if (typeName == null)
-                            throw new JsonException("Missing required property 'typeName' for exact entry.");
+                    DateTimeOffset? expiresAtUtc = element.TryGetProperty("expiresAtUtc", out var exp) && exp.ValueKind != JsonValueKind.Null
+                        ? exp.GetDateTimeOffset()
+                        : null;
 
-                        var methodName = element.TryGetProperty("methodName", out var mn) ? mn.GetString() : null;
-                        whitelist.Add(typeName, methodName);
-                    }
-                    else if (type == "pattern")
+                    switch (type)
                     {
-                        var pattern = element.GetProperty("pattern").GetString();
-                        if (pattern == null)
-                            throw new JsonException("Missing required property 'pattern' for pattern entry.");
+                        case "exact":
+                            var typeName = element.GetProperty("typeName").GetString();
+                            if (typeName == null)
+                                throw new JsonException("Missing required property 'typeName' for exact entry.");
 
-                        whitelist.AddPattern(pattern);
-                    }
-                    else
-                    {
-                        throw new JsonException($"Unknown entry type '{type}'. Expected 'exact' or 'pattern'.");
+                            var methodName = element.TryGetProperty("methodName", out var mn) ? mn.GetString() : null;
+                            whitelist.Add(typeName, methodName, expiresAtUtc);
+                            break;
+
+                        case "pattern":
+                            var pattern = element.GetProperty("pattern").GetString();
+                            if (pattern == null)
+                                throw new JsonException("Missing required property 'pattern' for pattern entry.");
+
+                            whitelist.AddPattern(pattern, expiresAtUtc);
+                            break;
+
+                        case "fingerprint":
+                            var fingerprintHash = element.GetProperty("fingerprintHash").GetString();
+                            if (fingerprintHash == null)
+                                throw new JsonException("Missing required property 'fingerprintHash' for fingerprint entry.");
+
+                            whitelist.AddFingerprint(fingerprintHash, expiresAtUtc);
+                            break;
+
+                        default:
+                            throw new JsonException($"Unknown entry type '{type}'. Expected 'exact', 'pattern', or 'fingerprint'.");
                     }
                 }
             }
@@ -131,12 +144,14 @@ namespace EfCoreNPlusOneGuard
             if (EntriesField == null)
                 throw new InvalidOperationException("Could not find _entries field in CallSiteWhitelist.");
 
-            var entries = (List<object>)EntriesField.GetValue(value)!;
+            var entries = (System.Collections.IEnumerable)EntriesField.GetValue(value)!;
 
             writer.WriteStartArray();
             foreach (var entry in entries)
             {
                 var entryType = entry.GetType();
+                var expiresAtUtc = (DateTimeOffset?)entryType.GetProperty("ExpiresAtUtc")!.GetValue(entry);
+
                 if (entryType.Name == "ExactEntry")
                 {
                     var typeName = (string)entryType.GetProperty("TypeName")!.GetValue(entry)!;
@@ -146,6 +161,7 @@ namespace EfCoreNPlusOneGuard
                     writer.WriteString("typeName", typeName);
                     if (methodName != null)
                         writer.WriteString("methodName", methodName);
+                    WriteExpiry(writer, expiresAtUtc);
                     writer.WriteEndObject();
                 }
                 else if (entryType.Name == "PatternEntry")
@@ -154,10 +170,26 @@ namespace EfCoreNPlusOneGuard
                     writer.WriteStartObject();
                     writer.WriteString("type", "pattern");
                     writer.WriteString("pattern", pattern);
+                    WriteExpiry(writer, expiresAtUtc);
+                    writer.WriteEndObject();
+                }
+                else if (entryType.Name == "FingerprintEntry")
+                {
+                    var fingerprintHash = (string)entryType.GetProperty("FingerprintHash")!.GetValue(entry)!;
+                    writer.WriteStartObject();
+                    writer.WriteString("type", "fingerprint");
+                    writer.WriteString("fingerprintHash", fingerprintHash);
+                    WriteExpiry(writer, expiresAtUtc);
                     writer.WriteEndObject();
                 }
             }
             writer.WriteEndArray();
+
+            static void WriteExpiry(Utf8JsonWriter writer, DateTimeOffset? expiresAtUtc)
+            {
+                if (expiresAtUtc is { } value)
+                    writer.WriteString("expiresAtUtc", value);
+            }
         }
     }
 }

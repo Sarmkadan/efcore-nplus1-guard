@@ -56,6 +56,10 @@ namespace EfCoreNPlusOneGuard
                 {
                     ValidatePatternEntry(entry, i, problems);
                 }
+                else if (entryType.Name == "FingerprintEntry")
+                {
+                    ValidateFingerprintEntry(entry, i, problems);
+                }
                 else
                 {
                     problems.Add($"Entry at index {i} has unknown type '{entryType.Name}'.");
@@ -95,6 +99,16 @@ namespace EfCoreNPlusOneGuard
             if (regex == null)
             {
                 problems.Add($"PatternEntry at index {index} has null Regex.");
+            }
+        }
+
+        private static void ValidateFingerprintEntry(object entry, int index, List<string> problems)
+        {
+            var fingerprintHash = entry.GetType().GetProperty("FingerprintHash")?.GetValue(entry) as string;
+
+            if (string.IsNullOrWhiteSpace(fingerprintHash))
+            {
+                problems.Add($"FingerprintEntry at index {index} has null or whitespace FingerprintHash.");
             }
         }
 

@@ -49,6 +49,17 @@ public sealed class QueryTracker
         // Проверка на превышение порога
         if (updatedTimestamps.Count >= options.Threshold)
         {
+            // A whitelisted fingerprint or call site suppresses the incident entirely.
+            var whitelist = options.CallSiteWhitelist;
+            if (whitelist is not null)
+            {
+                if (whitelist.IsFingerprintWhitelisted(fp.CommandTextHash))
+                    return null;
+
+                if (whitelist.IsWhitelisted(Environment.StackTrace))
+                    return null;
+            }
+
             // Determine severity based on configurable thresholds
             NPlusOneSeverity severity;
             if (updatedTimestamps.Count >= options.MediumSeverityThreshold)

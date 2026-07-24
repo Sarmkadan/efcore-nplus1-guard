@@ -103,6 +103,17 @@ public class NPlusOneGuardOptions
     /// </summary>
     /// <value>The minimum time between warning log entries. Defaults to 5 minutes.</value>
     public TimeSpan ReporterFailureLogInterval { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// A call-site whitelist that suppresses N+1 incidents matching one of its exact,
+    /// wildcard-pattern, or query-fingerprint entries. Defaults to <see langword="null"/>
+    /// (no suppression). Assign a <see cref="EfCoreNPlusOneGuard.CallSiteWhitelistFileProvider"/>'s
+    /// <see cref="Microsoft.Extensions.Options.IOptionsMonitor{TOptions}.CurrentValue"/> here, or
+    /// swap in a fresh <see cref="EfCoreNPlusOneGuard.CallSiteWhitelist"/> whenever hot-reloading
+    /// from a file, to pick up whitelist edits without restarting the observed application.
+    /// </summary>
+    /// <value>The active call-site whitelist, or <see langword="null"/> if none is configured.</value>
+    public CallSiteWhitelist? CallSiteWhitelist { get; set; }
 }
 
 /// <summary>
