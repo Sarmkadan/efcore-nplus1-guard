@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -47,13 +48,16 @@ namespace EfCoreNPlusOneGuard
         {
             public string Pattern { get; }
             public Regex Regex { get; }
+private readonly ConcurrentDictionary<string, Regex> _patternCache;
 
-            public PatternEntry(string pattern)
+            public PatternEntry(string pattern, ConcurrentDictionary<string, Regex> patternCache)
             {
                 Pattern = pattern;
+_patternCache = patternCache ?? throw new ArgumentNullException(nameof(patternCache));
                 // Escape regex meta characters except '*', then replace '*' with '.*'
                 var escaped = Regex.Escape(pattern).Replace(@"\*", ".*");
-                Regex = new Regex($"^{escaped}$", RegexOptions.Compiled);
+                // Cache the compiled regex to avoid recompiling the same pattern multiple times
+    Regex = _patternCache.GetOrAdd(pattern, p => new Regex($"^{escaped}$", RegexOptions.Compiled));
             }
 
             public override string Describe() => $"pattern:{Pattern}";
@@ -69,6 +73,7 @@ namespace EfCoreNPlusOneGuard
         }
 
         private readonly List<Entry> _entries = new();
+private readonly ConcurrentDictionary<string, Regex> _patternCache = new();
 
         /// <summary>
         /// Adds an exact type/method pair to the whitelist.
@@ -95,7 +100,7 @@ namespace EfCoreNPlusOneGuard
         {
             ArgumentException.ThrowIfNullOrEmpty(wildcardPattern);
 
-            _entries.Add(new PatternEntry(wildcardPattern) { ExpiresAtUtc = expiresAtUtc });
+            _entries.Add(new PatternEntry(wildcardPattern, _patternCache) { ExpiresAtUtc = expiresAtUtc });
         }
 
         /// <summary>
