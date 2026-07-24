@@ -58,42 +58,135 @@ private QueryFingerprint(string commandTextHash, string normalizedSql, string ca
 
         /// <summary>
         /// Normalizes SQL by removing literals/parameters, collapsing whitespace, and converting to lower case.
-        /// Uses Regex for the primary normalization which is both efficient and maintainable.
+        /// Performs a single, allocation-conscious pass over the input span instead of chaining several
+        /// <see cref="Regex"/> replacements (which each allocate an intermediate string and pay regex
+        /// engine overhead), keeping this on the per-query hot path cheap.
         /// </summary>
         private static string NormalizeSql(string sql)
         {
-            // Replace parameter placeholders (@p0, :p0, ?0, etc.) with a single placeholder.
-            var paramPattern = @"(@\w+|:\w+|\?\d*|\d+|'[^']*')";
-            var withoutParams = Regex.Replace(sql, paramPattern, "?");
+            ReadOnlySpan<char> span = sql.AsSpan();
+            var sb = new StringBuilder(span.Length);
+            var lastAppendedWasSpace = true; // suppress leading whitespace
 
-            // Collapse all whitespace sequences into a single space.
-            var collapsed = Regex.Replace(withoutParams, @"\s+", " ").Trim();
+            for (var i = 0; i < span.Length; i++)
+            {
+                var c = span[i];
 
-            // Convert to lower case for case‑insensitive comparison.
-            return collapsed.ToLowerInvariant();
+                if (c == '\'')
+                {
+                    // Consume a '...'-delimited string literal (matches the previous '[^']*' regex).
+                    var j = i + 1;
+                    while (j < span.Length && span[j] != '\'')
+                    {
+                        j++;
+                    }
+
+                    if (j < span.Length)
+                    {
+                        sb.Append('?');
+                        lastAppendedWasSpace = false;
+                        i = j;
+                        continue;
+                    }
+
+                    // No closing quote found; fall through and copy the character verbatim.
+                    sb.Append(c);
+                    lastAppendedWasSpace = false;
+                    continue;
+                }
+
+                if ((c == '@' || c == ':') && i + 1 < span.Length && IsWordChar(span[i + 1]))
+                {
+                    var j = i + 1;
+                    while (j < span.Length && IsWordChar(span[j]))
+                    {
+                        j++;
+                    }
+
+                    sb.Append('?');
+                    lastAppendedWasSpace = false;
+                    i = j - 1;
+                    continue;
+                }
+
+                if (c == '?')
+                {
+                    var j = i + 1;
+                    while (j < span.Length && char.IsAsciiDigit(span[j]))
+                    {
+                        j++;
+                    }
+
+                    sb.Append('?');
+                    lastAppendedWasSpace = false;
+                    i = j - 1;
+                    continue;
+                }
+
+                if (char.IsAsciiDigit(c))
+                {
+                    var j = i + 1;
+                    while (j < span.Length && char.IsAsciiDigit(span[j]))
+                    {
+                        j++;
+                    }
+
+                    sb.Append('?');
+                    lastAppendedWasSpace = false;
+                    i = j - 1;
+                    continue;
+                }
+
+                if (char.IsWhiteSpace(c))
+                {
+                    if (!lastAppendedWasSpace)
+                    {
+                        sb.Append(' ');
+                        lastAppendedWasSpace = true;
+                    }
+
+                    continue;
+                }
+
+                sb.Append(char.ToLowerInvariant(c));
+                lastAppendedWasSpace = false;
+            }
+
+            // Trim a single trailing collapsed space, if any.
+            if (sb.Length > 0 && sb[sb.Length - 1] == ' ')
+            {
+                sb.Length--;
+            }
+
+            return sb.ToString();
         }
 
         /// <summary>
+        /// Determines whether a character is a "word" character (letter, digit, or underscore) for the
+        /// purposes of matching <c>@name</c> / <c>:name</c> parameter placeholders.
+        /// </summary>
+        /// <param name="c">The character to test.</param>
+        /// <returns><see langword="true"/> if the character is a word character; otherwise <see langword="false"/>.</returns>
+        private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
+
+        /// <summary>
         /// Computes the SHA256 hash of the given input string.
-        /// Uses efficient span-based byte conversion to minimize allocations.
+        /// Uses <see cref="SHA256.HashData(ReadOnlySpan{byte})"/> and <see cref="Convert.ToHexStringLower(ReadOnlySpan{byte})"/>
+        /// to avoid the disposable hash algorithm instance and the manual hex-encoding loop, minimizing
+        /// allocations on the per-query hot path.
         /// </summary>
         private static string ComputeSha256Hash(string input)
         {
-            using var sha256 = SHA256.Create();
-
-            // Use span-based APIs for efficient processing
             ReadOnlySpan<char> inputSpan = input.AsSpan();
-            int byteCount = Encoding.UTF8.GetByteCount(inputSpan);
-            byte[] bytes = new byte[byteCount];
+            var byteCount = Encoding.UTF8.GetByteCount(inputSpan);
+
+            Span<byte> bytes = byteCount <= 512 ? stackalloc byte[byteCount] : new byte[byteCount];
             Encoding.UTF8.GetBytes(inputSpan, bytes);
 
-            var hashBytes = sha256.ComputeHash(bytes);
-            var sb = new StringBuilder(hashBytes.Length * 2);
-            foreach (var b in hashBytes)
-            {
-                sb.Append(b.ToString("x2"));
-            }
-            return sb.ToString();
+            Span<byte> hashBytes = stackalloc byte[SHA256.HashSizeInBytes];
+            SHA256.HashData(bytes, hashBytes);
+
+            return Convert.ToHexStringLower(hashBytes);
         }
 
         /// <summary>
