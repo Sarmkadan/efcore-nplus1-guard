@@ -241,7 +241,7 @@ public sealed class QueryTracker
             }
             else if (recentTimestamps.Count != timestamps.Count)
             {
-                _queryTimestamps[key] = recentTimestamps;
+                _queryTimestamps.TryUpdate(key, recentTimestamps, timestamps);
             }
         }
     }

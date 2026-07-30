@@ -113,7 +113,7 @@ if (tracker.Record != null)
 ```
 
 ## Notes
-- The tracker is **not thread‑safe**; concurrent calls to `TrackExecution` from multiple threads may corrupt internal state and lead to inaccurate incident detection. If multi‑threaded monitoring is required, external synchronization (e.g., a lock) must be applied.
+- The tracker is thread-safe; concurrent calls to `TrackExecution` from multiple threads are handled safely without requiring external synchronization.
 - `Record` reflects only the **most recent** incident; earlier incidents are overwritten when a new one is detected. To retain a history, consumers should inspect `Record` after each query batch and persist the value as needed.
 - Calling `TrackExecution` without any preceding query execution (e.g., in a tight loop that does not actually invoke EF Core) will still increment the internal counter, potentially producing false positives. Ensure the method is invoked only after a genuine EF Core query has been materialized.
 - The class currently does not implement `IDisposable`; the `Reset` method provides the means to reuse the instance without allocating a new object. Future versions may add disposal semantics, at which point calling `TrackExecution` after disposal would throw an `ObjectDisposedException`.
