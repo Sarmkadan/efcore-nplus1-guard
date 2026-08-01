@@ -22,7 +22,7 @@ public sealed class NPlusOneDetectedException : InvalidOperationException
     /// </summary>
     /// <param name="incident">The incident details that caused this exception.</param>
     public NPlusOneDetectedException(NPlusOneIncident incident)
-        : base(incident.ToString())
+        : base(incident.ToString().Length > 500 ? incident.ToString().Substring(0, 500) + "..." : incident.ToString())
     {
         Incident = incident;
     }
