@@ -3,8 +3,15 @@ using Xunit;
 
 namespace EfCoreNPlusOneGuard.Tests
 {
+    /// <summary>
+    /// Contains unit tests for the <see cref="QueryFingerprint"/> class, focusing on its fingerprint creation, 
+    /// normalization, equality logic, and hashing.
+    /// </summary>
     public class QueryFingerprintTests
     {
+        /// <summary>
+        /// Verifies that QueryFingerprint.Create throws an ArgumentNullException when provided with null command text.
+        /// </summary>
         [Fact]
         public void Create_WithNullCommandText_ThrowsArgumentNullException()
         {
@@ -16,6 +23,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Throws<ArgumentNullException>(() => QueryFingerprint.Create(nullCommandText, callSite));
         }
 
+        /// <summary>
+        /// Verifies that QueryFingerprint.Create throws an ArgumentNullException when provided with a null call site.
+        /// </summary>
         [Fact]
         public void Create_WithNullCallSite_ThrowsArgumentNullException()
         {
@@ -27,6 +37,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Throws<ArgumentNullException>(() => QueryFingerprint.Create(commandText, nullCallSite));
         }
 
+        /// <summary>
+        /// Verifies that queries with the same command structure but different parameter values produce the same fingerprint.
+        /// </summary>
         [Fact]
         public void Create_WithSameQueryDifferentParams_ProducesSameFingerprint()
         {
@@ -47,6 +60,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp1 == fp2);
         }
 
+        /// <summary>
+        /// Verifies that different query structures produce different fingerprints.
+        /// </summary>
         [Fact]
         public void Create_WithDifferentQueries_ProducesDifferentFingerprints()
         {
@@ -66,6 +82,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp1 != fp2);
         }
 
+        /// <summary>
+        /// Verifies that the same query executed from different call sites produces different fingerprints.
+        /// </summary>
         [Fact]
         public void Create_WithDifferentCallSites_ProducesDifferentFingerprints()
         {
@@ -86,6 +105,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp1 != fp2);
         }
 
+        /// <summary>
+        /// Verifies that QueryFingerprint normalizes SQL whitespace correctly during fingerprint creation.
+        /// </summary>
         [Fact]
         public void Create_NormalizesWhitespace()
         {
@@ -104,6 +126,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1, fp2);
         }
 
+        /// <summary>
+        /// Verifies that QueryFingerprint normalizes SQL case correctly during fingerprint creation.
+        /// </summary>
         [Fact]
         public void Create_NormalizesCase()
         {
@@ -122,6 +147,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1, fp2);
         }
 
+        /// <summary>
+        /// Verifies that QueryFingerprint removes string literals from SQL during fingerprint creation.
+        /// </summary>
         [Fact]
         public void Create_RemovesStringLiterals()
         {
@@ -140,6 +168,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1, fp2);
         }
 
+        /// <summary>
+        /// Verifies that QueryFingerprint handles various parameter styles (@p0, :p0, ?0) consistently.
+        /// </summary>
         [Fact]
         public void Create_HandlesDifferentParameterStyles()
         {
@@ -158,6 +189,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1, fp2);
         }
 
+        /// <summary>
+        /// Verifies that QueryFingerprint handles numeric parameters by normalizing them to a generic placeholder.
+        /// </summary>
         [Fact]
         public void Create_HandlesNumericParameters()
         {
@@ -176,6 +210,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1, fp2);
         }
 
+        /// <summary>
+        /// Verifies that the Equals method returns true when comparing a QueryFingerprint instance with itself.
+        /// </summary>
         [Fact]
         public void Equals_ReturnsTrueForSameInstance()
         {
@@ -188,6 +225,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp.Equals(fp));
         }
 
+        /// <summary>
+        /// Verifies that the Equals method returns false when comparing a QueryFingerprint instance with null.
+        /// </summary>
         [Fact]
         public void Equals_ReturnsFalseForNull()
         {
@@ -200,6 +240,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.False(fp.Equals(null));
         }
 
+        /// <summary>
+        /// Verifies that GetHashCode returns the same value for equal QueryFingerprint instances.
+        /// </summary>
         [Fact]
         public void GetHashCode_ReturnsSameValueForEqualFingerprints()
         {
@@ -216,6 +259,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1.GetHashCode(), fp2.GetHashCode());
         }
 
+        /// <summary>
+        /// Verifies that the equality operator (==) returns true for equal QueryFingerprint instances.
+        /// </summary>
         [Fact]
         public void OperatorEquals_ReturnsTrueForEqualFingerprints()
         {
@@ -232,6 +278,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp1 == fp2);
         }
 
+        /// <summary>
+        /// Verifies that the inequality operator (!=) returns true for different QueryFingerprint instances.
+        /// </summary>
         [Fact]
         public void OperatorNotEquals_ReturnsTrueForDifferentFingerprints()
         {
@@ -248,6 +297,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp1 != fp2);
         }
 
+        /// <summary>
+        /// Verifies that a complex query is normalized correctly and generates a valid SHA256 hash.
+        /// </summary>
         [Fact]
         public void Create_WithComplexQuery_NormalizesCorrectly()
         {
@@ -272,6 +324,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(64, fp.CommandTextHash.Length); // SHA256 hash is 64 characters
         }
 
+        /// <summary>
+        /// Verifies that string literals in SQL are handled consistently and normalized to the same placeholder.
+        /// </summary>
         [Fact]
         public void Create_HandlesStringLiteralsConsistently()
         {
@@ -290,6 +345,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1, fp2);
         }
 
+        /// <summary>
+        /// Verifies that Equals (object overload) handles null input correctly.
+        /// </summary>
         [Fact]
         public void Equals_ObjectOverload_HandlesNull()
         {
@@ -302,6 +360,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.False(fp.Equals((object?)null));
         }
 
+        /// <summary>
+        /// Verifies that Equals (object overload) returns false when comparing a QueryFingerprint with an object of a different type.
+        /// </summary>
         [Fact]
         public void Equals_ObjectOverload_HandlesNonQueryFingerprint()
         {
@@ -315,6 +376,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.False(fp.Equals(otherObject));
         }
 
+        /// <summary>
+        /// Verifies that Equals (object overload) returns true for equal QueryFingerprint instances.
+        /// </summary>
         [Fact]
         public void Equals_ObjectOverload_ReturnsTrueForEqualFingerprints()
         {
@@ -329,6 +393,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp1.Equals((object)fp2));
         }
 
+        /// <summary>
+        /// Verifies that Equals (object overload) returns false for different QueryFingerprint instances.
+        /// </summary>
         [Fact]
         public void Equals_ObjectOverload_ReturnsFalseForDifferentFingerprints()
         {
@@ -343,6 +410,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.False(fp1.Equals((object)fp2));
         }
 
+        /// <summary>
+        /// Verifies that GetHashCode produces different results for different call sites.
+        /// </summary>
         [Fact]
         public void GetHashCode_ConsistentWithEquals_ForDifferentCallSites()
         {
@@ -360,6 +430,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotEqual(fp1.GetHashCode(), fp2.GetHashCode());
         }
 
+        /// <summary>
+        /// Verifies that GetHashCode produces the same results for equal QueryFingerprint instances.
+        /// </summary>
         [Fact]
         public void GetHashCode_ConsistentWithEquals_ForSameCallSites()
         {
@@ -377,6 +450,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1.GetHashCode(), fp2.GetHashCode());
         }
 
+        /// <summary>
+        /// Verifies that QueryFingerprint truncates excessively long call sites correctly.
+        /// </summary>
         [Fact]
         public void Create_WithNullCallSite_HandlesCorrectly()
         {
@@ -394,6 +470,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotNull(fp.NormalizedSql);
         }
 
+        /// <summary>
+        /// Verifies that an empty call site produces a valid QueryFingerprint.
+        /// </summary>
         [Fact]
         public void Create_WithEmptyCallSite_ProducesValidFingerprint()
         {
@@ -411,6 +490,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotEqual(0, fp.CommandTextHash.Length);
         }
 
+        /// <summary>
+        /// Verifies that a whitespace-only call site produces a valid QueryFingerprint.
+        /// </summary>
         [Fact]
         public void Create_WithWhitespaceOnlyCallSite_ProducesValidFingerprint()
         {
@@ -426,6 +508,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotEqual(0, fp.CallSite.Length);
         }
 
+        /// <summary>
+        /// Verifies that fingerprints with identical normalized SQL but different call sites are not equal.
+        /// </summary>
         [Fact]
         public void Equals_WithIdenticalNormalizedSqlButDifferentCallSite_ReturnsFalse()
         {
@@ -445,6 +530,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotEqual(fp1, fp2); // Different fingerprints
         }
 
+        /// <summary>
+        /// Verifies that command text hash comparison is case-sensitive, as expected for SHA256 hashes.
+        /// </summary>
         [Fact]
         public void Create_WithCaseSensitiveHashComparison_UsesStringComparison()
         {
@@ -462,6 +550,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1, fp2);
         }
 
+        /// <summary>
+        /// Verifies that compiler frames in the call site are preserved in the CallSite property.
+        /// </summary>
         [Fact]
         public void Create_WithCompilerFrames_StripsThemFromCallSite()
         {
@@ -478,6 +569,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Contains("UserRepository.GetUser", fp.CallSite);
         }
 
+        /// <summary>
+        /// Verifies that fingerprints with different compiler frames are not equal.
+        /// </summary>
         [Fact]
         public void Create_WithDifferentCompilerFrames_ProducesDifferentFingerprints()
         {
@@ -498,6 +592,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotEqual(fp1, fp2);
         }
 
+        /// <summary>
+        /// Verifies that call sites with different whitespace are handled correctly.
+        /// </summary>
         [Fact]
         public void Create_WithSameCallSiteDifferentWhitespace_NormalizesCorrectly()
         {
@@ -515,6 +612,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotEqual(fp1, fp2);
         }
 
+        /// <summary>
+        /// Verifies that GetHashCode is deterministic across multiple calls for the same input.
+        /// </summary>
         [Fact]
         public void GetHashCode_Deterministic_AcrossMultipleCalls()
         {
@@ -530,6 +630,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(fp1.GetHashCode(), fp2.GetHashCode());
         }
 
+        /// <summary>
+        /// Verifies that QueryFingerprint truncates excessively long call sites correctly.
+        /// </summary>
         [Fact]
         public void Create_WithVeryLongCallSite_TruncatesCorrectly()
         {
@@ -545,6 +648,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(new string('x', 4096), fp.CallSite);
         }
 
+        /// <summary>
+        /// Verifies that QueryFingerprint truncates excessively long SQL strings correctly.
+        /// </summary>
         [Fact]
         public void Create_WithVeryLongSql_TruncatesCorrectly()
         {
@@ -560,6 +666,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp.CommandTextHash.Length == 64); // SHA256 hash
         }
 
+        /// <summary>
+        /// Verifies that fingerprints with identical properties are equal.
+        /// </summary>
         [Fact]
         public void Create_WithIdenticalProperties_ProducesEqualFingerprints()
         {
@@ -583,6 +692,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.False(fp1 != fp2);
         }
 
+        /// <summary>
+        /// Verifies that fingerprints with different properties are not equal.
+        /// </summary>
         [Fact]
         public void Create_WithDifferentProperties_ProducesDifferentFingerprints()
         {
@@ -606,6 +718,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.False(fp1 == fp2);
         }
 
+        /// <summary>
+        /// Verifies that hash collisions, if they were to occur, do not lead to equal fingerprints if the underlying normalized SQL differs.
+        /// </summary>
         [Fact]
         public void Create_WithSameHashButDifferentNormalizedSql_ProducesDifferentFingerprints()
         {
@@ -634,6 +749,9 @@ namespace EfCoreNPlusOneGuard.Tests
             }
         }
 
+        /// <summary>
+        /// Verifies that unicode characters in the call site are handled correctly.
+        /// </summary>
         [Fact]
         public void Create_WithUnicodeCallSite_HandlesCorrectly()
         {
@@ -650,6 +768,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotNull(fp.NormalizedSql);
         }
 
+        /// <summary>
+        /// Verifies that call sites with special characters are preserved.
+        /// </summary>
         [Fact]
         public void Create_WithSpecialCharactersInCallSite_HandlesCorrectly()
         {
@@ -665,6 +786,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Contains("d__", fp.CallSite);
         }
 
+        /// <summary>
+        /// Verifies that the Equals method returns true for the same instance.
+        /// </summary>
         [Fact]
         public void Equals_WithSameInstance_ReturnsTrue()
         {
@@ -677,6 +801,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp.Equals(fp));
         }
 
+        /// <summary>
+        /// Verifies that the Equals method returns true for different instances with identical properties.
+        /// </summary>
         [Fact]
         public void Equals_WithDifferentInstancesSameValues_ReturnsTrue()
         {
@@ -692,6 +819,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp2.Equals(fp1));
         }
 
+        /// <summary>
+        /// Verifies that the Equals method returns false for different instances with different properties.
+        /// </summary>
         [Fact]
         public void Equals_WithDifferentInstancesDifferentValues_ReturnsFalse()
         {
@@ -707,6 +837,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.False(fp2.Equals(fp1));
         }
 
+        /// <summary>
+        /// Verifies that the equality operator (==) returns true when both operands are null.
+        /// </summary>
         [Fact]
         public void OperatorEquals_WithBothNull_ReturnsTrue()
         {
@@ -718,6 +851,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp1 == fp2);
         }
 
+        /// <summary>
+        /// Verifies that the equality operator (==) returns false when one operand is null.
+        /// </summary>
         [Fact]
         public void OperatorEquals_WithOneNull_ReturnsFalse()
         {
@@ -732,6 +868,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.False(fp2 == fp1);
         }
 
+        /// <summary>
+        /// Verifies that the inequality operator (!=) returns false when both operands are null.
+        /// </summary>
         [Fact]
         public void OperatorNotEquals_WithBothNull_ReturnsFalse()
         {
@@ -743,6 +882,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.False(fp1 != fp2);
         }
 
+        /// <summary>
+        /// Verifies that the inequality operator (!=) returns true when one operand is null.
+        /// </summary>
         [Fact]
         public void OperatorNotEquals_WithOneNull_ReturnsTrue()
         {
@@ -757,6 +899,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.True(fp2 != fp1);
         }
 
+        /// <summary>
+        /// Verifies that fingerprints with identical normalized SQL but different call sites are unequal.
+        /// </summary>
         [Fact]
         public void Create_WithSameQueryDifferentCallSites_ProducesDifferentFingerprints()
         {
@@ -784,6 +929,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotEqual(fp1.GetHashCode(), fp2.GetHashCode());
         }
 
+        /// <summary>
+        /// Verifies that a complex query is normalized correctly and handles all expected normalization edge cases.
+        /// </summary>
         [Fact]
         public void Create_WithComplexQuery_HandlesAllNormalizationEdgeCases()
         {
