@@ -117,7 +117,7 @@ namespace EfCoreNPlusOneGuard
             public string Sql { get; }
             public int Count { get; }
             public TimeSpan TotalDuration { get; }
-            public TimeSpan AvgDuration => Count == 0 ? TimeSpan.Zero : TimeSpan.FromTicks(TotalDuration.Ticks / Count);
+            public TimeSpan AvgDuration => Count <= 0 ? TimeSpan.Zero : TimeSpan.FromTicks(TotalDuration.Ticks / Count);
 
             public QueryStatEntry(string sql, int count, TimeSpan totalDuration)
             {
