@@ -7,6 +7,24 @@ namespace EfCoreNPlusOneGuard;
 
 /// <summary>
 /// Intercepts database commands to detect N+1 query patterns.
+///
+/// Example of registering the interceptor with Entity Framework Core:
+/// <code>
+/// var options = new NPlusOneGuardOptions()
+///     .SetDetectThreshold(2)
+///     .SetMinDurationToReporting);
+///
+/// var optionsBuilder = new DbContextOptionsBuilder<MyDbContext>();
+/// optionsBuilder
+///     .UseSqlServer(connectionString)
+///     .AddInterceptors(new NPlusOneGuardInterceptor(options, incident =>
+///     {
+///         // Handle the detected N+1 query incident
+///         logger.Warning("N+1 query detected: {Sql}", incident.Sql);
+///     }));
+///
+/// var dbContextOptions = optionsBuilder.Options;
+/// </code>
 /// </summary>
 public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
 {
