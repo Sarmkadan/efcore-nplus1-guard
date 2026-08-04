@@ -229,9 +229,10 @@ public sealed class QueryTracker
 
     private void CleanupOldRecords(DateTimeOffset now)
     {
-        foreach (var key in _queryTimestamps.Keys.ToList())
+        foreach (var kvp in _queryTimestamps)
         {
-            var timestamps = _queryTimestamps[key];
+            var key = kvp.Key;
+            var timestamps = kvp.Value;
             var cutoff = now.Subtract(_detectionWindow);
             var recentTimestamps = timestamps.Where(t => t >= cutoff).ToImmutableList();
 
