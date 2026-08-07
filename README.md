@@ -366,3 +366,24 @@ EfCoreNPlusOneGuard.NPlusOneDetectedException : N+1 query pattern(s) detected wh
 
 An `IServiceProvider` overload is also available for tests that resolve their `DbContext` from a
 DI container: `serviceProvider.AssertNoNPlusOne(() => { ... })`.
+
+## IncidentAggregatorTests
+
+The `IncidentAggregatorTests` class contains unit tests for the `IncidentAggregator` class, verifying its thread-safe behavior, incident accumulation by fingerprint, and summary generation capabilities.
+
+Example usage (from the test class):
+```csharp
+var aggregator = new IncidentAggregator();
+aggregator.Add(new NPlusOneIncident
+{
+    SqlQuery = "SELECT * FROM Users WHERE Id = @p0",
+    Count = 1,
+    Severity = NPlusOneSeverity.Medium,
+    StackTrace = "at UserRepository.GetUser()",
+    CallSite = "UserRepository.GetUser"
+});
+
+// Verify incident was added
+var allIncidents = aggregator.All();
+Assert.Single(allIncidents);
+```
