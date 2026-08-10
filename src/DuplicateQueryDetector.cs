@@ -102,6 +102,12 @@ namespace EfCoreNPlusOneGuard
             /// Gets the number of times the query has been executed.
             /// </summary>
             public int Count { get; set; }
+
+            /// <summary>
+            /// Returns a concise, informative string representation of this duplicate query group.
+            /// </summary>
+            /// <returns>A string containing the SQL, parameters, and execution count.</returns>
+            public override string ToString() => $"DuplicateQueryGroup {{ Sql = {Sql}, Parameters = {Parameters}, Count = {Count} }}";
         }
     }
 }
