@@ -54,4 +54,6 @@ public class NPlusOneIncident
 /// EF Core, System, and this library's namespace.
 /// </summary>
 public string? CallSite { get; set; }
+
+    public override string ToString() => $"NPlusOneIncident {{ SqlQuery = {SqlQuery}, Count = {Count}, Severity = {Severity}, StackTrace = {StackTrace}, CallSite = {CallSite} }}";
 }
