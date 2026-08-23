@@ -135,6 +135,11 @@ public class NPlusOneGuardOptions
     /// </summary>
     /// <value>The active call-site whitelist, or <see langword="null"/> if none is configured. Default: null</value>
     public CallSiteWhitelist? CallSiteWhitelist { get; set; }
+
+    /// <summary>
+    /// Returns a concise, informative representation of the current options.
+    /// </summary>
+    public override string ToString() => $"NPlusOneGuardOptions {{ Threshold = {Threshold}, DetectionWindow = {DetectionWindow}, ThrowOnDetection = {ThrowOnDetection}, LogOnDetection = {LogOnDetection}, IgnoredQueryPatterns = {IgnoredQueryPatterns}, LowSeverityThreshold = {LowSeverityThreshold} }}";
 }
 
 /// <summary>
