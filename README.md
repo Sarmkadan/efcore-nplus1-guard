@@ -411,3 +411,33 @@ Console.WriteLine($"Hash codes match: {fp1.GetHashCode() == fp2.GetHashCode()}")
 var fp3 = QueryFingerprint.Create("SELECT * FROM Users WHERE Id = @id", "OtherApp.Services.OtherService.GetUser");
 Console.WriteLine($"Different call site: {fp1.Equals(fp3)}"); // false
 ```
+
+## DuplicateQueryDetectorTests
+
+The `DuplicateQueryDetectorTests` class verifies the behavior of the `DuplicateQueryDetector` component, which tracks SQL queries and identifies repeated executions that may indicate N+1 query patterns. It ensures that the detector correctly handles edge cases like null or empty input, respects configurable thresholds for duplicate counts, and accurately groups and reports repeated queries while ignoring distinct ones.
+
+Example usage:
+```csharp
+using EfCoreNPlusOneGuard;
+
+var detector = new DuplicateQueryDetector(threshold: 2);
+
+// Record queries executed during a request
+detector.Record("SELECT * FROM Users WHERE Id = @p0");
+detector.Record("SELECT * FROM Users WHERE Id = @p0");
+detector.Record("SELECT * FROM Orders WHERE UserId = @p0");
+
+// Retrieve detected duplicates
+var duplicates = detector.GetDuplicates();
+
+if (duplicates.Count > 0)
+{
+    foreach (var group in duplicates)
+    {
+        Console.WriteLine($"Duplicate query detected: {group.Sql} (count: {group.Count})");
+    }
+}
+
+// Reset the detector for the next request
+detector.Clear();
+```
