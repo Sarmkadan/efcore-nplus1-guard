@@ -387,3 +387,27 @@ aggregator.Add(new NPlusOneIncident
 var allIncidents = aggregator.All();
 Assert.Single(allIncidents);
 ```
+
+## QueryFingerprintTests
+
+The `QueryFingerprintTests` class contains unit tests that verify the `QueryFingerprint` class's ability to normalize SQL command text, handle varying parameter styles, and ensure consistent equality and hash code generation. These tests confirm that queries with different formatting, casing, whitespace, or string literals are correctly normalized into identical fingerprints when their logical structure matches.
+
+Example usage demonstrating the underlying `QueryFingerprint` behavior verified by these tests:
+```csharp
+using EfCoreNPlusOneGuard;
+
+// Create fingerprints from differently formatted queries
+var fp1 = QueryFingerprint.Create("SELECT * FROM Users WHERE Id = @id", "MyApp.Services.UserService.GetUser");
+var fp2 = QueryFingerprint.Create("  select * from users where id = @userId  ", "MyApp.Services.UserService.GetUser");
+
+// Normalization ensures they are considered equal
+bool areEqual = fp1.Equals(fp2); // true
+Console.WriteLine($"Fingerprints match: {areEqual}");
+
+// Hash codes are consistent for equal fingerprints
+Console.WriteLine($"Hash codes match: {fp1.GetHashCode() == fp2.GetHashCode()}");
+
+// Different call sites produce different fingerprints
+var fp3 = QueryFingerprint.Create("SELECT * FROM Users WHERE Id = @id", "OtherApp.Services.OtherService.GetUser");
+Console.WriteLine($"Different call site: {fp1.Equals(fp3)}"); // false
+```
