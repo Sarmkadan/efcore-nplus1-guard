@@ -6,8 +6,14 @@ using Xunit;
 
 namespace EfCoreNPlusOneGuard.Tests
 {
+    /// <summary>
+    /// Tests for the <see cref="IncidentAggregator"/> class.
+    /// </summary>
     public class IncidentAggregatorTests
     {
+        /// <summary>
+        /// Tests that adding a null incident throws an ArgumentNullException.
+        /// </summary>
         [Fact]
         public void Add_WithNullIncident_ThrowsArgumentNullException()
         {
@@ -19,6 +25,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Throws<ArgumentNullException>(() => aggregator.Add(nullIncident));
         }
 
+        /// <summary>
+        /// Tests that adding a valid incident adds it to the aggregator.
+        /// </summary>
         [Fact]
         public void Add_WithValidIncident_AddsToAggregator()
         {
@@ -47,6 +56,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(1, summary.UniqueFingerprints);
         }
 
+        /// <summary>
+        /// Tests that adding incidents with the same fingerprint accumulates their counts.
+        /// </summary>
         [Fact]
         public void Add_WithSameFingerprint_AccumulatesIncidents()
         {
@@ -81,6 +93,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(2, counts[incident1.SqlQuery]);
         }
 
+        /// <summary>
+        /// Tests that adding incidents with different fingerprints stores them separately.
+        /// </summary>
         [Fact]
         public void Add_WithDifferentFingerprints_StoresSeparately()
         {
@@ -115,6 +130,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(1, counts[incident2.SqlQuery]);
         }
 
+        /// <summary>
+        /// Tests that CountsByFingerprint returns correct counts for multiple incidents.
+        /// </summary>
         [Fact]
         public void CountsByFingerprint_WithMultipleIncidents_ReturnsCorrectCounts()
         {
@@ -158,6 +176,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(1, counts["SELECT * FROM Orders WHERE UserId = @p0"]);
         }
 
+        /// <summary>
+        /// Tests that CountsByFingerprint returns a read-only dictionary.
+        /// </summary>
         [Fact]
         public void CountsByFingerprint_ReturnsReadOnlyDictionary()
         {
@@ -180,6 +201,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.IsAssignableFrom<IReadOnlyDictionary<string, int>>(counts);
         }
 
+        /// <summary>
+        /// Tests that All returns all incidents when multiple incidents are added.
+        /// </summary>
         [Fact]
         public void All_WithMultipleIncidents_ReturnsAllIncidents()
         {
@@ -215,6 +239,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.IsAssignableFrom<IReadOnlyList<NPlusOneIncident>>(allIncidents);
         }
 
+        /// <summary>
+        /// Tests that All returns an empty list when no incidents have been added.
+        /// </summary>
         [Fact]
         public void All_WithEmptyAggregator_ReturnsEmptyList()
         {
@@ -228,6 +255,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Empty(allIncidents);
         }
 
+        /// <summary>
+        /// Tests that GetScanSummary returns zero values when no incidents have been added.
+        /// </summary>
         [Fact]
         public void GetScanSummary_WithEmptyAggregator_ReturnsZeroValues()
         {
@@ -243,6 +273,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Empty(summary.TopOffenders);
         }
 
+        /// <summary>
+        /// Tests that GetScanSummary returns correct summary when incidents have been added.
+        /// </summary>
         [Fact]
         public void GetScanSummary_WithIncidents_ReturnsCorrectSummary()
         {
@@ -286,6 +319,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(3, summary.TopOffenders.Sum(o => o.Count));
         }
 
+        /// <summary>
+        /// Tests that GetTopOffenders returns an empty list when no incidents have been added.
+        /// </summary>
         [Fact]
         public void GetTopOffenders_WithEmptyAggregator_ReturnsEmptyList()
         {
@@ -299,6 +335,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Empty(topOffenders);
         }
 
+        /// <summary>
+        /// Tests that GetTopOffenders returns an empty list when a negative count is requested.
+        /// </summary>
         [Fact]
         public void GetTopOffenders_WithNegativeCount_ReturnsEmptyList()
         {
@@ -321,6 +360,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Empty(topOffenders);
         }
 
+        /// <summary>
+        /// Tests that GetTopOffenders returns an empty list when zero is requested.
+        /// </summary>
         [Fact]
         public void GetTopOffenders_WithZeroCount_ReturnsEmptyList()
         {
@@ -343,6 +385,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Empty(topOffenders);
         }
 
+        /// <summary>
+        /// Tests that GetTopOffenders returns the top offenders by count when multiple incidents exist.
+        /// </summary>
         [Fact]
         public void GetTopOffenders_WithMultipleIncidents_ReturnsTopByCount()
         {
@@ -395,6 +440,9 @@ namespace EfCoreNPlusOneGuard.Tests
                       topOffenders[1].Fingerprint == "SELECT * FROM Orders WHERE UserId = @p0");
         }
 
+        /// <summary>
+        /// Tests that GetTopOffenders orders by last seen when counts are equal.
+        /// </summary>
         [Fact]
         public void GetTopOffenders_WithSameCount_OrdersByLastSeen()
         {
@@ -431,6 +479,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(1, topOffenders[1].Count);
         }
 
+        /// <summary>
+        /// Tests that Clear resets the aggregator when incidents have been added.
+        /// </summary>
         [Fact]
         public void Clear_WithIncidents_ResetsAggregator()
         {
@@ -461,6 +512,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(0, summary.UniqueFingerprints);
         }
 
+        /// <summary>
+        /// Tests that Clear does not throw when called on an empty aggregator.
+        /// </summary>
         [Fact]
         public void Clear_WithEmptyAggregator_DoesNotThrow()
         {
@@ -472,6 +526,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Empty(aggregator.All());
         }
 
+        /// <summary>
+        /// Tests that BuildSummaryText returns the no incidents message when no incidents have been added.
+        /// </summary>
         [Fact]
         public void BuildSummaryText_WithEmptyAggregator_ReturnsNoIncidentsMessage()
         {
@@ -485,6 +542,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal("No N+1 incidents detected.", summaryText);
         }
 
+        /// <summary>
+        /// Tests that BuildSummaryText returns a formatted summary when incidents have been added.
+        /// </summary>
         [Fact]
         public void BuildSummaryText_WithIncidents_ReturnsFormattedSummary()
         {
@@ -521,6 +581,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Contains("2x: SELECT * FROM Users WHERE Id = @p0", summaryText);
         }
 
+        /// <summary>
+        /// Tests that Add is thread-safe when called concurrently from multiple threads.
+        /// </summary>
         [Fact]
         public async Task Add_WithConcurrentAdds_ThreadSafe()
         {
@@ -566,6 +629,9 @@ namespace EfCoreNPlusOneGuard.Tests
             }
         }
 
+        /// <summary>
+        /// Tests that GetScanSummary is thread-safe when accessed concurrently.
+        /// </summary>
         [Fact]
         public async Task GetScanSummary_WithConcurrentAccess_ThreadSafe()
         {
@@ -601,6 +667,9 @@ namespace EfCoreNPlusOneGuard.Tests
             await Task.WhenAll(tasks);
         }
 
+        /// <summary>
+        /// Tests that CountsByFingerprint is thread-safe when accessed concurrently.
+        /// </summary>
         [Fact]
         public async Task CountsByFingerprint_WithConcurrentAccess_ThreadSafe()
         {
@@ -636,6 +705,9 @@ namespace EfCoreNPlusOneGuard.Tests
             await Task.WhenAll(tasks);
         }
 
+        /// <summary>
+        /// Tests that Clear is thread-safe when accessed concurrently.
+        /// </summary>
         [Fact]
         public async Task Clear_WithConcurrentAccess_ThreadSafe()
         {
@@ -674,6 +746,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.NotNull(allIncidents);
         }
 
+        /// <summary>
+        /// Tests that GetTopOffenders returns only the requested number of offenders when more exist.
+        /// </summary>
         [Fact]
         public void GetTopOffenders_WithMoreOffendersThanRequested_ReturnsOnlyRequestedCount()
         {
@@ -699,6 +774,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(3, topOffenders.Count);
         }
 
+        /// <summary>
+        /// Tests that GetTopOffenders returns all offenders when the requested count is greater than or equal to the number of offenders.
+        /// </summary>
         [Fact]
         public void GetTopOffenders_WithAllOffendersRequested_ReturnsAll()
         {
@@ -724,6 +802,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(5, topOffenders.Count);
         }
 
+        /// <summary>
+        /// Tests that the TopOffender record's properties are correctly set.
+        /// </summary>
         [Fact]
         public void TopOffenderRecord_PropertiesAreCorrect()
         {
@@ -741,6 +822,9 @@ namespace EfCoreNPlusOneGuard.Tests
             Assert.Equal(lastSeen, offender.LastSeen);
         }
 
+        /// <summary>
+        /// Tests that the Summary record's properties are correctly set.
+        /// </summary>
         [Fact]
         public void SummaryRecord_PropertiesAreCorrect()
         {
