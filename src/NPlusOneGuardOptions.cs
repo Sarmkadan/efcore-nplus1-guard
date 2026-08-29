@@ -12,17 +12,41 @@ namespace EfCoreNPlusOneGuard;
 /// </summary>
 public class NPlusOneGuardOptions
 {
+    /// <summary>The default threshold for detecting N+1 queries.</summary>
+    public const int DefaultThreshold = 5;
+
+    /// <summary>The default time window for detecting N+1 queries.</summary>
+    public static readonly TimeSpan DefaultDetectionWindow = TimeSpan.FromSeconds(2);
+
+    /// <summary>The default repeat count at which severity becomes <c>Medium</c>.</summary>
+    public const int DefaultLowSeverityThreshold = 10;
+
+    /// <summary>The default repeat count at which severity becomes <c>High</c>.</summary>
+    public const int DefaultMediumSeverityThreshold = 50;
+
+    /// <summary>The default maximum number of stack frames to capture.</summary>
+    public const int DefaultMaxStackFrames = int.MaxValue;
+
+    /// <summary>The default maximum length for SQL command text in bytes.</summary>
+    public const int DefaultMaxSqlLength = 8192;
+
+    /// <summary>The default maximum length for call site information in characters.</summary>
+    public const int DefaultMaxCallSiteLength = 4096;
+
+    /// <summary>The default minimum interval between rate-limited reporter warning log entries.</summary>
+    public static readonly TimeSpan DefaultReporterFailureLogInterval = TimeSpan.FromMinutes(5);
+
     /// <summary>
     /// The threshold for detecting N+1 queries.
     /// </summary>
-    /// <value>The threshold. Default: 5</value>
-    public int Threshold { get; set; } = 5;
+    /// <value>The threshold. Default: <see cref="DefaultThreshold"/>.</value>
+    public int Threshold { get; set; } = DefaultThreshold;
 
     /// <summary>
     /// The time window for detecting N+1 queries.
     /// </summary>
-    /// <value>The detection window. Default: 00:00:02</value>
-    public TimeSpan DetectionWindow { get; set; } = TimeSpan.FromSeconds(2);
+    /// <value>The detection window. Default: <see cref="DefaultDetectionWindow"/>.</value>
+    public TimeSpan DetectionWindow { get; set; } = DefaultDetectionWindow;
 
     /// <summary>
     /// Whether to throw an exception when an N+1 query is detected.
@@ -44,17 +68,17 @@ public class NPlusOneGuardOptions
 
     /// <summary>
     /// The repeat count at which severity becomes <c>Medium</c>.
-    /// Incidents with a repeat count < this value are considered <c>Low</c>.
+    /// Incidents with a repeat count &lt; this value are considered <c>Low</c>.
     /// </summary>
-    /// <value>The repeat count at which severity becomes <c>Medium</c>. Incidents with a repeat count < this value are considered <c>Low</c>. Default: 10</value>
-    public int LowSeverityThreshold { get; set; } = 10;
+    /// <value>The repeat count at which severity becomes <c>Medium</c>. Incidents with a repeat count &lt; this value are considered <c>Low</c>. Default: <see cref="DefaultLowSeverityThreshold"/>.</value>
+    public int LowSeverityThreshold { get; set; } = DefaultLowSeverityThreshold;
 
     /// <summary>
     /// The repeat count at which severity becomes <c>High</c>.
-    /// Incidents with a repeat count >= this value are considered <c>High</c>.
+    /// Incidents with a repeat count &gt;= this value are considered <c>High</c>.
     /// </summary>
-    /// <value>The repeat count at which severity becomes <c>High</c>. Incidents with a repeat count >= this value are considered <c>High</c>. Default: 50</value>
-    public int MediumSeverityThreshold { get; set; } = 50;
+    /// <value>The repeat count at which severity becomes <c>High</c>. Incidents with a repeat count &gt;= this value are considered <c>High</c>. Default: <see cref="DefaultMediumSeverityThreshold"/>.</value>
+    public int MediumSeverityThreshold { get; set; } = DefaultMediumSeverityThreshold;
 
     /// <summary>
     /// Whether to capture the call site (method name, file name, line number) for N+1 incidents.
@@ -87,26 +111,26 @@ public class NPlusOneGuardOptions
     /// <summary>
     /// The maximum number of stack frames to capture when resolving call sites.
     /// </summary>
-    /// <value>The maximum number of stack frames to capture when resolving call sites. Default: int.MaxValue</value>
-    public int MaxStackFrames { get; set; } = int.MaxValue;
+    /// <value>The maximum number of stack frames to capture when resolving call sites. Default: <see cref="DefaultMaxStackFrames"/>.</value>
+    public int MaxStackFrames { get; set; } = DefaultMaxStackFrames;
 
     /// <summary>
     /// Maximum allowed length for SQL command text in bytes. Queries exceeding this limit
     /// will be truncated to prevent excessive memory allocation during normalization and hashing.
-    /// Defaults to 8KB (8192 bytes), which is sufficient for most SQL queries while preventing
+    /// Defaults to <see cref="DefaultMaxSqlLength"/> bytes, which is sufficient for most SQL queries while preventing
     /// denial-of-service via extremely large queries.
     /// </summary>
-    /// <value>Maximum allowed length for SQL command text in bytes. Default: 8192</value>
-    public int MaxSqlLength { get; set; } = 8192;
+    /// <value>Maximum allowed length for SQL command text in bytes. Default: <see cref="DefaultMaxSqlLength"/>.</value>
+    public int MaxSqlLength { get; set; } = DefaultMaxSqlLength;
 
     /// <summary>
     /// Maximum allowed length for call site information in characters. Call sites exceeding this limit
     /// will be truncated to prevent excessive memory allocation during fingerprint creation.
-    /// Defaults to 4KB (4096 characters), which is sufficient for most stack traces while preventing
+    /// Defaults to <see cref="DefaultMaxCallSiteLength"/> characters, which is sufficient for most stack traces while preventing
     /// denial-of-service via extremely large call site strings.
     /// </summary>
-    /// <value>Maximum allowed length for call site information in characters. Default: 4096</value>
-    public int MaxCallSiteLength { get; set; } = 4096;
+    /// <value>Maximum allowed length for call site information in characters. Default: <see cref="DefaultMaxCallSiteLength"/>.</value>
+    public int MaxCallSiteLength { get; set; } = DefaultMaxCallSiteLength;
 
     /// <summary>
     /// Controls how file-based reporters behave when they exhaust their write retries
@@ -122,8 +146,8 @@ public class NPlusOneGuardOptions
     /// reporter drops incidents because of persistent write failures. Only applies when
     /// <see cref="ReporterFailureMode"/> is <see cref="EfCoreNPlusOneGuard.ReporterFailureMode.LogOnce"/>.
     /// </summary>
-    /// <value>The minimum time between warning log entries. Defaults to 5 minutes.</value>
-    public TimeSpan ReporterFailureLogInterval { get; set; } = TimeSpan.FromMinutes(5);
+    /// <value>The minimum time between warning log entries. Default: <see cref="DefaultReporterFailureLogInterval"/>.</value>
+    public TimeSpan ReporterFailureLogInterval { get; set; } = DefaultReporterFailureLogInterval;
 
     /// <summary>
     /// A call-site whitelist that suppresses N+1 incidents matching one of its exact,
