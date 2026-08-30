@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EfCoreNPlusOneGuard;
 
@@ -90,7 +91,7 @@ public abstract class FileBasedIncidentReporter : IIncidentReporter, IDisposable
 		_append = append;
 		_failureMode = options?.ReporterFailureMode ?? ReporterFailureMode.LogOnce;
 		_failureLogInterval = options?.ReporterFailureLogInterval ?? TimeSpan.FromMinutes(5);
-		_logger = logger;
+		_logger = logger is NullLogger ? null : logger;
 		_aggregator = aggregator;
 	}
 
@@ -287,6 +288,7 @@ public abstract class FileBasedIncidentReporter : IIncidentReporter, IDisposable
 	private async Task WriteLinesWithRetryAsync(IReadOnlyCollection<string> lines)
 	{
 		var truncate = !_append && !_fileInitialized;
+		var createsFile = !_fileInitialized && !File.Exists(_validatedFilePath);
 
 		for (var attempt = 0; ; attempt++)
 		{
@@ -303,14 +305,46 @@ public abstract class FileBasedIncidentReporter : IIncidentReporter, IDisposable
 					await File.AppendAllLinesAsync(_validatedFilePath, lines, _encoding).ConfigureAwait(false);
 				}
 
-				_fileInitialized = true;
+				if (!_fileInitialized)
+				{
+					_fileInitialized = true;
+
+					if ((createsFile || truncate) && _logger is not null)
+					{
+						_logger.LogDebug(
+							"Initialized incident report file '{FilePath}' with append mode {AppendMode}.",
+							_validatedFilePath,
+							_append);
+					}
+				}
+
 				return;
 			}
-			catch (IOException) when (attempt < RetryDelays.Length)
+			catch (IOException exception) when (attempt < RetryDelays.Length)
 			{
+				LogWriteFailure(exception, attempt + 1);
 				await Task.Delay(RetryDelays[attempt]).ConfigureAwait(false);
 			}
+			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+			{
+				LogWriteFailure(exception, attempt + 1);
+				throw;
+			}
 		}
+	}
+
+	private void LogWriteFailure(Exception exception, int attempt)
+	{
+		if (_logger is null)
+		{
+			return;
+		}
+
+		_logger.LogWarning(
+			exception,
+			"Failed to write N+1 incident report file '{FilePath}' on attempt {Attempt}.",
+			_validatedFilePath,
+			attempt);
 	}
 
 	/// <summary>
@@ -330,7 +364,19 @@ public abstract class FileBasedIncidentReporter : IIncidentReporter, IDisposable
 	/// </exception>
 	private void HandleWriteFailure(Exception exception)
 	{
-		_aggregator?.RecordDroppedIncident();
+		if (_aggregator is not null)
+		{
+			_aggregator.RecordDroppedIncident();
+
+			if (_logger is not null)
+			{
+				_logger.LogError(
+					exception,
+					"Dropped N+1 incident after exhausting write retries for '{FilePath}'. Total dropped incidents: {DroppedCount}.",
+					_validatedFilePath,
+					_aggregator.DroppedIncidents);
+			}
+		}
 
 		switch (_failureMode)
 		{
