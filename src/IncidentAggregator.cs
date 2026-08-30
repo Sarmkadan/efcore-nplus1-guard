@@ -93,10 +93,17 @@ public sealed class IncidentAggregator
     /// </summary>
     /// <param name="maxTrackedFingerprints">Maximum number of unique fingerprints to track before evicting old entries. Default is 10,000.</param>
     /// <param name="timeWindow">Optional time window for filtering incidents. If null, all incidents are tracked indefinitely.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown if maxTrackedFingerprints is less than 1.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown if <paramref name="maxTrackedFingerprints"/> is less than 1, or if
+    /// <paramref name="timeWindow"/> is non-null and not positive.
+    /// </exception>
     public IncidentAggregator(int maxTrackedFingerprints = 10_000, TimeSpan? timeWindow = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(maxTrackedFingerprints, 1);
+        if (timeWindow.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(timeWindow.Value, TimeSpan.Zero, nameof(timeWindow));
+        }
 
         _maxTrackedFingerprints = maxTrackedFingerprints;
         _timeWindow = timeWindow;
