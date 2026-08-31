@@ -28,6 +28,10 @@ public sealed class QueryTracker
 
     /// <summary>
     /// Регистрирует выполнение запроса и проверяет на наличие инцидента N+1.
+    /// Severity is <see cref="NPlusOneSeverity.Medium"/> when the repeat count reaches
+    /// <see cref="NPlusOneGuardOptions.MediumSeverityThreshold"/> and
+    /// <see cref="NPlusOneSeverity.Low"/> when it reaches
+    /// <see cref="NPlusOneGuardOptions.LowSeverityThreshold"/> or remains below that threshold.
     /// </summary>
     /// <param name="fp">Отпечаток запроса.</param>
     /// <param name="options">Параметры детекции N+1.</param>
@@ -64,11 +68,11 @@ public sealed class QueryTracker
             NPlusOneSeverity severity;
             if (updatedTimestamps.Count >= options.MediumSeverityThreshold)
             {
-                severity = NPlusOneSeverity.High;
+                severity = NPlusOneSeverity.Medium;
             }
             else if (updatedTimestamps.Count >= options.LowSeverityThreshold)
             {
-                severity = NPlusOneSeverity.Medium;
+                severity = NPlusOneSeverity.Low;
             }
             else
             {
