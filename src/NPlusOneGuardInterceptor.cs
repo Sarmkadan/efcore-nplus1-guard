@@ -38,12 +38,16 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
     /// </summary>
     /// <param name="options">The guard options.</param>
     /// <param name="onDetected">Optional callback invoked when an N+1 incident is detected.</param>
-    public NPlusOneGuardInterceptor(NPlusOneGuardOptions options, Action<NPlusOneIncident>? onDetected = null)
+    /// <param name="logger">Optional logger used for detection and diagnostic messages.</param>
+    public NPlusOneGuardInterceptor(
+        NPlusOneGuardOptions options,
+        Action<NPlusOneIncident>? onDetected = null,
+        ILogger? logger = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _onDetected = onDetected;
         _tracker = new QueryTracker(options);
-        _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<NPlusOneGuardInterceptor>.Instance;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<NPlusOneGuardInterceptor>.Instance;
 
         // Log diagnostics for stale whitelist entries at startup
         if (_options.CallSiteWhitelist is { } whitelist)
@@ -129,7 +133,7 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
             return;
         }
 
-        _tracker.TrackExecution(commandText, _onDetected);
+        _tracker.TrackExecution(commandText, HandleDetection);
     }
 
     private async ValueTask TrackQueryAsync(string commandText, CancellationToken cancellationToken)
@@ -155,7 +159,21 @@ public sealed class NPlusOneGuardInterceptor : DbCommandInterceptor
             return;
         }
 
-        _tracker.TrackExecution(commandText, _onDetected);
+        _tracker.TrackExecution(commandText, HandleDetection);
+    }
+
+    private void HandleDetection(NPlusOneIncident incident)
+    {
+        if (_options.LogOnDetection)
+        {
+            _logger.LogWarning(
+                "N+1 query pattern detected. NormalizedSql: {NormalizedSql}, ExecutionCount: {ExecutionCount}, Severity: {Severity}",
+                incident.SqlQuery,
+                incident.Count,
+                incident.Severity);
+        }
+
+        _onDetected?.Invoke(incident);
     }
 
     /// <summary>
