@@ -26,15 +26,15 @@ namespace EfCoreNPlusOneGuard.Tests
         [Fact] public void Add_WithNullTypeName_Throws()
         {
             var wl = new CallSiteWhitelist();
-            var ex = Assert.Throws<ArgumentException>(() => wl.Add(null!, null));
-            Assert.Equal("Type name cannot be null or whitespace. (Parameter 'typeName')", ex.Message);
+            var ex = Assert.Throws<ArgumentNullException>(() => wl.Add(null!, null));
+            Assert.Equal("typeName", ex.ParamName);
         }
 
         [Fact] public void Add_WithEmptyTypeName_Throws()
         {
             var wl = new CallSiteWhitelist();
             var ex = Assert.Throws<ArgumentException>(() => wl.Add(string.Empty, null));
-            Assert.Equal("Type name cannot be null or whitespace. (Parameter 'typeName')", ex.Message);
+            Assert.Equal("typeName", ex.ParamName);
         }
 
         [Fact] public void Add_WithWhitespaceTypeName_Throws()
@@ -54,15 +54,15 @@ namespace EfCoreNPlusOneGuard.Tests
         [Fact] public void AddPattern_WithNullPattern_Throws()
         {
             var wl = new CallSiteWhitelist();
-            var ex = Assert.Throws<ArgumentException>(() => wl.AddPattern(null!));
-            Assert.Equal("Pattern cannot be null or whitespace. (Parameter 'wildcardPattern')", ex.Message);
+            var ex = Assert.Throws<ArgumentNullException>(() => wl.AddPattern(null!));
+            Assert.Equal("wildcardPattern", ex.ParamName);
         }
 
         [Fact] public void AddPattern_WithEmptyPattern_Throws()
         {
             var wl = new CallSiteWhitelist();
             var ex = Assert.Throws<ArgumentException>(() => wl.AddPattern(string.Empty));
-            Assert.Equal("Pattern cannot be null or whitespace. (Parameter 'wildcardPattern')", ex.Message);
+            Assert.Equal("wildcardPattern", ex.ParamName);
         }
 
         [Fact] public void AddPattern_WithWhitespacePattern_Throws()

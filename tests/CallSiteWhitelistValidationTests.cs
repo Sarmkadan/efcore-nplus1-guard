@@ -65,10 +65,10 @@ namespace EfCoreNPlusOneGuard.Tests
             // Corrupt the ExactEntry's TypeName to whitespace via reflection
             var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
                 BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var entries = (IList<object>)entriesField.GetValue(whitelist)!;
+            var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
             var exactEntry = entries[0];
-            var typeNameProp = exactEntry.GetType().GetProperty("TypeName")!;
-            typeNameProp.SetValue(exactEntry, "   ");
+            var typeNameField = exactEntry.GetType().GetField("<TypeName>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            typeNameField.SetValue(exactEntry, "   ");
 
             // Act
             var problems = whitelist.Validate();
@@ -87,10 +87,10 @@ namespace EfCoreNPlusOneGuard.Tests
             // Corrupt the PatternEntry's Pattern to null via reflection
             var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
                 BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var entries = (IList<object>)entriesField.GetValue(whitelist)!;
+            var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
             var patternEntry = entries[0];
-            var patternProp = patternEntry.GetType().GetProperty("Pattern")!;
-            patternProp.SetValue(patternEntry, null);
+            var patternField = patternEntry.GetType().GetField("<Pattern>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            patternField.SetValue(patternEntry, null);
 
             // Act
             var problems = whitelist.Validate();
@@ -109,10 +109,10 @@ namespace EfCoreNPlusOneGuard.Tests
             // Corrupt the FingerprintEntry's FingerprintHash to whitespace via reflection
             var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
                 BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var entries = (IList<object>)entriesField.GetValue(whitelist)!;
+            var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
             var fingerprintEntry = entries[0];
-            var hashProp = fingerprintEntry.GetType().GetProperty("FingerprintHash")!;
-            hashProp.SetValue(fingerprintEntry, "");
+            var hashField = fingerprintEntry.GetType().GetField("<FingerprintHash>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            hashField.SetValue(fingerprintEntry, "");
 
             // Act
             var problems = whitelist.Validate();
@@ -131,10 +131,10 @@ namespace EfCoreNPlusOneGuard.Tests
             // Corrupt the entry
             var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
                 BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var entries = (IList<object>)entriesField.GetValue(whitelist)!;
+            var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
             var exactEntry = entries[0];
-            var typeNameProp = exactEntry.GetType().GetProperty("TypeName")!;
-            typeNameProp.SetValue(exactEntry, null);
+            var typeNameField = exactEntry.GetType().GetField("<TypeName>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            typeNameField.SetValue(exactEntry, null);
 
             // Act & Assert
             var ex = Assert.Throws<ArgumentException>(() => whitelist.EnsureValid());
