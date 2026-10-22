@@ -182,7 +182,7 @@ public static class NPlusOneIncidentExtensions
     {
         ArgumentNullException.ThrowIfNull(incidents);
 
-        return incidents.OrderByDescending(i => i, Comparer<NPlusOneIncident>.Create(CompareBySeverityAndCount));
+        return incidents.OrderBy(i => i, Comparer<NPlusOneIncident>.Create(CompareBySeverityAndCount));
     }
 
     /// <summary>

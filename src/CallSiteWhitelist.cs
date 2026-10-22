@@ -84,7 +84,7 @@ private readonly ConcurrentDictionary<string, Regex> _patternCache = new();
         /// <exception cref="ArgumentException">Thrown when <paramref name="typeName"/> is null or whitespace.</exception>
         public void Add(string typeName, string? methodName = null, DateTimeOffset? expiresAtUtc = null)
         {
-            ArgumentException.ThrowIfNullOrEmpty(typeName);
+            ArgumentException.ThrowIfNullOrWhiteSpace(typeName);
 
             _entries.Add(new ExactEntry(typeName, methodName) { ExpiresAtUtc = expiresAtUtc });
         }
@@ -98,7 +98,7 @@ private readonly ConcurrentDictionary<string, Regex> _patternCache = new();
         /// <exception cref="ArgumentException">Thrown when <paramref name="wildcardPattern"/> is null or whitespace.</exception>
         public void AddPattern(string wildcardPattern, DateTimeOffset? expiresAtUtc = null)
         {
-            ArgumentException.ThrowIfNullOrEmpty(wildcardPattern);
+            ArgumentException.ThrowIfNullOrWhiteSpace(wildcardPattern);
 
             _entries.Add(new PatternEntry(wildcardPattern, _patternCache) { ExpiresAtUtc = expiresAtUtc });
         }

@@ -14,7 +14,7 @@ namespace EfCoreNPlusOneGuard;
 public sealed class IncidentAggregator
 {
     private readonly ConcurrentDictionary<string, List<NPlusOneIncident>> _incidentsByFingerprint = new();
-    private readonly List<NPlusOneIncident> _allIncidents = [];
+    private readonly System.Collections.Concurrent.ConcurrentBag<NPlusOneIncident> _allIncidents = [];
 
     // Tracks the most recent time a fingerprint was seen for LRU eviction.
     private readonly ConcurrentDictionary<string, DateTime> _lastSeenByFingerprint = new();
@@ -202,7 +202,7 @@ public sealed class IncidentAggregator
     /// <returns>A read‑only list of all incidents.</returns>
     public IReadOnlyList<NPlusOneIncident> All()
     {
-        return _allIncidents.AsReadOnly();
+        return _allIncidents.ToList().AsReadOnly();
     }
 
     /// <summary>
@@ -283,7 +283,7 @@ public sealed class IncidentAggregator
         lock (_lruLock)
         {
             _incidentsByFingerprint.Clear();
-            _allIncidents.Clear();
+            _allIncidents.Clear();  // ConcurrentBag.Clear() is thread-safe
             _lastSeenByFingerprint.Clear();
             _lruList.Clear();
         }
