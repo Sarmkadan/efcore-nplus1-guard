@@ -15,7 +15,8 @@ namespace EfCoreNPlusOneGuard.Tests
         public JsonIncidentReporterTests()
         {
             // Create a unique temporary file for each test run.
-            _tempFilePath = Path.GetTempFileName();
+            // FileBasedIncidentReporter only accepts paths under the current working directory.
+            _tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), Guid.NewGuid().ToString("N") + ".json");
 
             // Ensure the file starts empty.
             File.WriteAllText(_tempFilePath, string.Empty);
@@ -69,14 +70,14 @@ namespace EfCoreNPlusOneGuard.Tests
         }
 
         [Fact]
-        public void Report_WritesJsonLineToFile()
+        public async System.Threading.Tasks.Task Report_WritesJsonLineToFile()
         {
             // Arrange
             var incident = CreateSampleIncident();
             string expectedLine = JsonIncidentReporter.Serialize(incident);
 
             // Act
-            _reporter.Report(incident);
+            await _reporter.ReportAsync(incident);
             // Dispose to ensure the write is flushed.
             _reporter.Dispose();
 
@@ -101,10 +102,10 @@ namespace EfCoreNPlusOneGuard.Tests
         }
 
         [Fact]
-        public void Report_NullIncident_ThrowsArgumentNullException()
+        public async System.Threading.Tasks.Task Report_NullIncident_ThrowsArgumentNullException()
         {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => _reporter.Report(null!));
+            // Act & Assert: Report is async void, so the async API is the one that surfaces the exception.
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _reporter.ReportAsync(null!));
         }
     }
 }

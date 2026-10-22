@@ -16,7 +16,8 @@ public class FileIncidentReporterTests : IDisposable
 
     public FileIncidentReporterTests()
     {
-        _testFilePath = Path.Combine(Path.GetTempPath(), $"FileIncidentReporterTests_{Guid.NewGuid()}.log");
+        // FileBasedIncidentReporter only accepts paths under the current working directory.
+        _testFilePath = Path.Combine(Directory.GetCurrentDirectory(), $"FileIncidentReporterTests_{Guid.NewGuid()}.log");
     }
 
     public void Dispose()

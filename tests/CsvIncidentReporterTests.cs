@@ -13,8 +13,8 @@ namespace EfCoreNPlusOneGuard.Tests
 
         public CsvIncidentReporterTests()
         {
-            // Create a unique temporary file for each test run.
-            _tempFilePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".csv");
+            // FileBasedIncidentReporter only accepts paths under the current working directory.
+            _tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), Guid.NewGuid().ToString("N") + ".csv");
             _reporter = new CsvIncidentReporter(_tempFilePath, append: true);
         }
 
@@ -40,13 +40,13 @@ namespace EfCoreNPlusOneGuard.Tests
         }
 
         [Fact]
-        public void Report_WithNullIncident_ThrowsArgumentNullException()
+        public async Task Report_WithNullIncident_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => _reporter.Report(null!));
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _reporter.ReportAsync(null!));
         }
 
         [Fact]
-        public void Report_WithValidIncident_WritesCsvLine()
+        public async Task Report_WithValidIncident_WritesCsvLine()
         {
             var incident = new NPlusOneIncident
             {
@@ -56,39 +56,35 @@ namespace EfCoreNPlusOneGuard.Tests
                 CallSite = "UserRepository.GetUsers"
             };
 
-            _reporter.Report(incident);
+            await _reporter.ReportAsync(incident);
 
             Assert.True(File.Exists(_tempFilePath));
             var content = File.ReadAllText(_tempFilePath);
-            // Header + one data line
+            // Append mode on a fresh file writes no header (the header is only written on truncate).
             var lines = content.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            Assert.Equal(2, lines.Length);
+            Assert.Single(lines);
             Assert.Contains("SELECT * FROM Users WHERE Id = @p0", content);
-            Assert.Contains("3", content);
-            Assert.Contains("High", content);
+            Assert.Contains(",3,High,", content);
             Assert.Contains("UserRepository.GetUsers", content);
         }
 
         [Fact]
-        public void ReportBatch_WithNullIncidents_ThrowsArgumentNullException()
+        public async Task ReportBatch_WithNullIncidents_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => _reporter.ReportBatch(null!));
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _reporter.ReportBatchAsync(null!));
         }
 
         [Fact]
-        public void ReportBatch_WithEmptyCollection_DoesNotThrowAndWritesOnlyHeader()
+        public async Task ReportBatch_WithEmptyCollection_DoesNotCreateFile()
         {
-            _reporter.ReportBatch(new List<NPlusOneIncident>());
+            await _reporter.ReportBatchAsync(new List<NPlusOneIncident>());
 
-            Assert.True(File.Exists(_tempFilePath));
-            var content = File.ReadAllText(_tempFilePath);
-            var lines = content.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            // Only header line should be present
-            Assert.Single(lines);
+            // Nothing to write, so the reporter must not touch the file.
+            Assert.False(File.Exists(_tempFilePath));
         }
 
         [Fact]
-        public void ReportBatch_WithValidIncidents_WritesMultipleLines()
+        public async Task ReportBatch_WithValidIncidents_WritesMultipleLines()
         {
             var incidents = new List<NPlusOneIncident>
             {
@@ -108,21 +104,20 @@ namespace EfCoreNPlusOneGuard.Tests
                 }
             };
 
-            _reporter.ReportBatch(incidents);
+            await _reporter.ReportBatchAsync(incidents);
 
             Assert.True(File.Exists(_tempFilePath));
             var content = File.ReadAllText(_tempFilePath);
             var lines = content.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            // Header + two data lines
-            Assert.Equal(3, lines.Length);
+            Assert.Equal(2, lines.Length);
             Assert.Contains("SELECT * FROM Users WHERE Id = @p0", content);
             Assert.Contains("SELECT * FROM Orders WHERE UserId = @p0", content);
-            Assert.Contains("5", content);
-            Assert.Contains("10", content);
+            Assert.Contains(",5,High,", content);
+            Assert.Contains(",10,Medium,", content);
         }
 
         [Fact]
-        public void ReportBatch_WithNullInCollection_SkipsNullIncident()
+        public async Task ReportBatch_WithNullInCollection_SkipsNullIncident()
         {
             var incidents = new List<NPlusOneIncident?>
             {
@@ -143,20 +138,19 @@ namespace EfCoreNPlusOneGuard.Tests
                 }
             };
 
-            // Cast to non‑nullable list for the reporter (it will ignore nulls internally)
-            _reporter.ReportBatch(incidents as List<NPlusOneIncident> ?? new List<NPlusOneIncident>());
+            // The reporter skips null entries internally.
+            await _reporter.ReportBatchAsync(incidents!);
 
             Assert.True(File.Exists(_tempFilePath));
             var content = File.ReadAllText(_tempFilePath);
             var lines = content.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            // Header + two valid incidents
-            Assert.Equal(3, lines.Length);
+            Assert.Equal(2, lines.Length);
             Assert.Contains("SELECT * FROM Products", content);
             Assert.Contains("SELECT * FROM Categories", content);
         }
 
         [Fact]
-        public void Report_WithIncidentHavingNullFields_HandlesGracefully()
+        public async Task Report_WithIncidentHavingNullFields_HandlesGracefully()
         {
             var incident = new NPlusOneIncident
             {
@@ -166,16 +160,16 @@ namespace EfCoreNPlusOneGuard.Tests
                 CallSite = null
             };
 
-            _reporter.Report(incident);
+            await _reporter.ReportAsync(incident);
 
             Assert.True(File.Exists(_tempFilePath));
             var content = File.ReadAllText(_tempFilePath);
-            // Expect empty fields for null values (two commas in a row)
-            Assert.Contains(",,Low,0,", content);
+            // Empty fingerprint and call site, then count, severity and duration "0".
+            Assert.Contains(",1,Low,0,", content);
         }
 
         [Fact]
-        public void Report_WithAppendFalse_TruncatesFileOnFirstWrite()
+        public async Task Report_WithAppendFalse_TruncatesFileOnFirstWrite()
         {
             // First reporter writes a line with append = true
             var firstReporter = new CsvIncidentReporter(_tempFilePath, append: true);
@@ -186,7 +180,7 @@ namespace EfCoreNPlusOneGuard.Tests
                 Severity = NPlusOneSeverity.Low,
                 CallSite = "Test.First"
             };
-            firstReporter.Report(firstIncident);
+            await firstReporter.ReportAsync(firstIncident);
 
             // Second reporter uses append = false, which should truncate before writing
             var secondReporter = new CsvIncidentReporter(_tempFilePath, append: false);
@@ -197,10 +191,10 @@ namespace EfCoreNPlusOneGuard.Tests
                 Severity = NPlusOneSeverity.Medium,
                 CallSite = "Test.Second"
             };
-            secondReporter.Report(secondIncident);
+            await secondReporter.ReportAsync(secondIncident);
 
             var finalContent = File.ReadAllText(_tempFilePath);
-            // Header + second incident only
+            // Truncating write emits the header followed by the second incident only.
             var lines = finalContent.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
             Assert.Equal(2, lines.Length);
             Assert.DoesNotContain("First incident", finalContent);
