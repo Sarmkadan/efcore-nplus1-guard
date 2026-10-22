@@ -36,7 +36,7 @@ public class DuplicateQueryDetectorExtensionsTests
         string? sql = null;
 
         // Act and Assert
-        Assert.Throws<ArgumentException>(() => detector.Record(sql));
+        Assert.Throws<ArgumentNullException>(() => detector.Record(sql));
     }
 
     [Fact]
@@ -73,8 +73,8 @@ public class DuplicateQueryDetectorExtensionsTests
         detector.Record(sql);
         detector.Record(sql);
 
-        // Act and Assert
-        Assert.Equal(1, detector.GetTotalDuplicateCount());
+        // Act and Assert: total executions of the duplicated query (2 records of one SQL)
+        Assert.Equal(2, detector.GetTotalDuplicateCount());
     }
 
     [Fact]

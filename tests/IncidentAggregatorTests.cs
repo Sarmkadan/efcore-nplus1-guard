@@ -353,11 +353,8 @@ namespace EfCoreNPlusOneGuard.Tests
             };
             aggregator.Add(incident);
 
-            // Act
-            var topOffenders = aggregator.GetTopOffenders(-1);
-
-            // Assert
-            Assert.Empty(topOffenders);
+            // Act & Assert: negative counts are rejected by ArgumentOutOfRangeException.ThrowIfNegative
+            Assert.Throws<ArgumentOutOfRangeException>(() => aggregator.GetTopOffenders(-1));
         }
 
         /// <summary>

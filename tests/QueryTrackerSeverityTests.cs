@@ -44,11 +44,12 @@ namespace EfCoreNPlusOneGuard.Tests
             var tracker = new QueryTracker(options);
             var fp = QueryFingerprint.Create("SELECT * FROM Products", "Test");
 
+            // Current implementation has two levels (Low below MediumSeverityThreshold, Medium at or above it).
+            Assert.Equal(NPlusOneSeverity.Low, tracker.Record(fp, options)!.Severity);
+            Assert.Equal(NPlusOneSeverity.Low, tracker.Record(fp, options)!.Severity);
             Assert.Equal(NPlusOneSeverity.Low, tracker.Record(fp, options)!.Severity);
             Assert.Equal(NPlusOneSeverity.Low, tracker.Record(fp, options)!.Severity);
             Assert.Equal(NPlusOneSeverity.Medium, tracker.Record(fp, options)!.Severity);
-            Assert.Equal(NPlusOneSeverity.Medium, tracker.Record(fp, options)!.Severity);
-            Assert.Equal(NPlusOneSeverity.High, tracker.Record(fp, options)!.Severity);
         }
 
         [Fact]

@@ -52,7 +52,7 @@ public class NPlusOneGuardOptionsExtensionsTests
     {
         var options = CreateOptions();
 
-        Assert.Throws<ArgumentException>(() => options.IsQueryIgnored(null!));
+        Assert.Throws<ArgumentNullException>(() => options.IsQueryIgnored(null!));
         Assert.Throws<ArgumentException>(() => options.IsQueryIgnored(string.Empty));
     }
 
