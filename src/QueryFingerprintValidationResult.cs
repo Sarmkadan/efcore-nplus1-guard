@@ -1,5 +1,5 @@
-namespace EfCoreNPlusOneGuard
-{
+namespace EfCoreNPlusOneGuard;
+
 	/// <summary>
 	/// Represents the validation result for a query fingerprint, containing the normalized SQL,
 	/// command text hash, call site information, and any validation errors encountered.
@@ -88,4 +88,3 @@ namespace EfCoreNPlusOneGuard
 		=> new(commandTextHash, normalizedSql, callSite, validationErrors);
 
 	}
-}

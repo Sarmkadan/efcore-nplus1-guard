@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Options;
 
-namespace EfCoreNPlusOneGuard
-{
+namespace EfCoreNPlusOneGuard;
+
 	/// <summary>
 	/// Validates <see cref="NPlusOneGuardOptions"/> instances.
 	/// </summary>
@@ -77,4 +77,3 @@ namespace EfCoreNPlusOneGuard
 				: QueryFingerprintValidationResult.Failure(string.Empty, string.Empty, string.Empty, failures.ToArray());
 		}
 	}
-}

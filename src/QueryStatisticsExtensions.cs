@@ -4,105 +4,104 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EfCoreNPlusOneGuard
+namespace EfCoreNPlusOneGuard;
+
+/// <summary>
+/// Extension methods for <see cref="QueryStatistics"/> that provide additional functionality
+/// for analyzing and formatting query statistics.
+/// </summary>
+public static class QueryStatisticsExtensions
 {
     /// <summary>
-    /// Extension methods for <see cref="QueryStatistics"/> that provide additional functionality
-    /// for analyzing and formatting query statistics.
+    /// Gets the top queries ordered by total duration (execution time) descending.
     /// </summary>
-    public static class QueryStatisticsExtensions
+    /// <param name="statistics">The query statistics instance.</param>
+    /// <param name="n">Maximum number of entries to return.</param>
+    /// <returns>A read-only list of <see cref="QueryStatistics.QueryStatEntry"/> ordered by total duration.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="n"/> is negative.</exception>
+    public static IReadOnlyList<QueryStatistics.QueryStatEntry> TopByDuration(this QueryStatistics statistics, int n)
     {
-        /// <summary>
-        /// Gets the top queries ordered by total duration (execution time) descending.
-        /// </summary>
-        /// <param name="statistics">The query statistics instance.</param>
-        /// <param name="n">Maximum number of entries to return.</param>
-        /// <returns>A read-only list of <see cref="QueryStatistics.QueryStatEntry"/> ordered by total duration.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="n"/> is negative.</exception>
-        public static IReadOnlyList<QueryStatistics.QueryStatEntry> TopByDuration(this QueryStatistics statistics, int n)
+        ArgumentNullException.ThrowIfNull(statistics);
+        ArgumentOutOfRangeException.ThrowIfNegative(n);
+
+        return statistics.TopByCount(n)
+            .OrderByDescending(entry => entry.TotalDuration)
+            .ToList()
+            .AsReadOnly();
+    }
+
+    /// <summary>
+    /// Gets the top queries ordered by average duration (execution time per execution) descending.
+    /// </summary>
+    /// <param name="statistics">The query statistics instance.</param>
+    /// <param name="n">Maximum number of entries to return.</param>
+    /// <returns>A read-only list of <see cref="QueryStatistics.QueryStatEntry"/> ordered by average duration.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="n"/> is negative.</exception>
+    public static IReadOnlyList<QueryStatistics.QueryStatEntry> TopByAvgDuration(this QueryStatistics statistics, int n)
+    {
+        ArgumentNullException.ThrowIfNull(statistics);
+        ArgumentOutOfRangeException.ThrowIfNegative(n);
+
+        return statistics.TopByCount(n)
+            .OrderByDescending(entry => entry.AvgDuration)
+            .ToList()
+            .AsReadOnly();
+    }
+
+    /// <summary>
+    /// Gets all queries that exceed a specified average duration threshold.
+    /// </summary>
+    /// <param name="statistics">The query statistics instance.</param>
+    /// <param name="threshold">The minimum average duration threshold.</param>
+    /// <returns>A read-only list of <see cref="QueryStatistics.QueryStatEntry"/> that exceed the threshold.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
+    public static IReadOnlyList<QueryStatistics.QueryStatEntry> WhereAvgDurationExceeds(this QueryStatistics statistics, TimeSpan threshold)
+    {
+        ArgumentNullException.ThrowIfNull(statistics);
+
+        return statistics.TopByCount(int.MaxValue)
+            .Where(entry => entry.AvgDuration > threshold)
+            .ToList()
+            .AsReadOnly();
+    }
+
+    /// <summary>
+    /// Gets a formatted string representation of the query statistics summary.
+    /// </summary>
+    /// <param name="statistics">The query statistics instance.</param>
+    /// <param name="includeTopQueries">Whether to include top queries in the summary.</param>
+    /// <returns>A formatted string containing statistics summary.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
+    public static string ToSummaryString(this QueryStatistics statistics, bool includeTopQueries = true)
+    {
+        ArgumentNullException.ThrowIfNull(statistics);
+
+        var lines = new List<string>
         {
-            ArgumentNullException.ThrowIfNull(statistics);
-            ArgumentOutOfRangeException.ThrowIfNegative(n);
+            "Query Statistics Summary:",
+            "-------------------------",
+            $"Total Queries: {statistics.TotalQueries}",
+            $"Unique Queries: {statistics.UniqueQueries}",
+            $"Total Duration: {statistics.TotalDuration.TotalMilliseconds:F2} ms",
+            $"Average Duration: {(statistics.TotalQueries > 0 ? statistics.TotalDuration.TotalMilliseconds / statistics.TotalQueries : 0):F2} ms"
+        };
 
-            return statistics.TopByCount(n)
-                .OrderByDescending(entry => entry.TotalDuration)
-                .ToList()
-                .AsReadOnly();
-        }
-
-        /// <summary>
-        /// Gets the top queries ordered by average duration (execution time per execution) descending.
-        /// </summary>
-        /// <param name="statistics">The query statistics instance.</param>
-        /// <param name="n">Maximum number of entries to return.</param>
-        /// <returns>A read-only list of <see cref="QueryStatistics.QueryStatEntry"/> ordered by average duration.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="n"/> is negative.</exception>
-        public static IReadOnlyList<QueryStatistics.QueryStatEntry> TopByAvgDuration(this QueryStatistics statistics, int n)
+        if (includeTopQueries && statistics.TotalQueries > 0)
         {
-            ArgumentNullException.ThrowIfNull(statistics);
-            ArgumentOutOfRangeException.ThrowIfNegative(n);
+            lines.Add("");
+            lines.Add("Top 5 Queries by Count:");
+            lines.Add("------------------------");
 
-            return statistics.TopByCount(n)
-                .OrderByDescending(entry => entry.AvgDuration)
-                .ToList()
-                .AsReadOnly();
-        }
-
-        /// <summary>
-        /// Gets all queries that exceed a specified average duration threshold.
-        /// </summary>
-        /// <param name="statistics">The query statistics instance.</param>
-        /// <param name="threshold">The minimum average duration threshold.</param>
-        /// <returns>A read-only list of <see cref="QueryStatistics.QueryStatEntry"/> that exceed the threshold.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
-        public static IReadOnlyList<QueryStatistics.QueryStatEntry> WhereAvgDurationExceeds(this QueryStatistics statistics, TimeSpan threshold)
-        {
-            ArgumentNullException.ThrowIfNull(statistics);
-
-            return statistics.TopByCount(int.MaxValue)
-                .Where(entry => entry.AvgDuration > threshold)
-                .ToList()
-                .AsReadOnly();
-        }
-
-        /// <summary>
-        /// Gets a formatted string representation of the query statistics summary.
-        /// </summary>
-        /// <param name="statistics">The query statistics instance.</param>
-        /// <param name="includeTopQueries">Whether to include top queries in the summary.</param>
-        /// <returns>A formatted string containing statistics summary.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="statistics"/> is <see langword="null"/>.</exception>
-        public static string ToSummaryString(this QueryStatistics statistics, bool includeTopQueries = true)
-        {
-            ArgumentNullException.ThrowIfNull(statistics);
-
-            var lines = new List<string>
+            var topByCount = statistics.TopByCount(5);
+            foreach (var entry in topByCount)
             {
-                "Query Statistics Summary:",
-                "-------------------------",
-                $"Total Queries: {statistics.TotalQueries}",
-                $"Unique Queries: {statistics.UniqueQueries}",
-                $"Total Duration: {statistics.TotalDuration.TotalMilliseconds:F2} ms",
-                $"Average Duration: {(statistics.TotalQueries > 0 ? statistics.TotalDuration.TotalMilliseconds / statistics.TotalQueries : 0):F2} ms"
-            };
-
-            if (includeTopQueries && statistics.TotalQueries > 0)
-            {
-                lines.Add("");
-                lines.Add("Top 5 Queries by Count:");
-                lines.Add("------------------------");
-
-                var topByCount = statistics.TopByCount(5);
-                foreach (var entry in topByCount)
-                {
-                    lines.Add($" {entry.Count,6} executions - {entry.TotalDuration.TotalMilliseconds,8:F2} ms total - {entry.AvgDuration.TotalMilliseconds,8:F2} ms avg");
-                    lines.Add($" {entry.Sql.Substring(0, Math.Min(entry.Sql.Length, 80))}...");
-                }
+                lines.Add($" {entry.Count,6} executions - {entry.TotalDuration.TotalMilliseconds,8:F2} ms total - {entry.AvgDuration.TotalMilliseconds,8:F2} ms avg");
+                lines.Add($" {entry.Sql.Substring(0, Math.Min(entry.Sql.Length, 80))}...");
             }
-
-            return string.Join(Environment.NewLine, lines);
         }
+
+        return string.Join(Environment.NewLine, lines);
     }
 }

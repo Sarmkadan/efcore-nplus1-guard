@@ -1,44 +1,43 @@
 using System;
 
-namespace EfCoreNPlusOneGuard
+namespace EfCoreNPlusOneGuard;
+
+/// <summary>
+/// Provides extension methods for <see cref="QueryFingerprint"/>.
+/// </summary>
+public static class QueryFingerprintExtensions
 {
     /// <summary>
-    /// Provides extension methods for <see cref="QueryFingerprint"/>.
+    /// Checks if two <see cref="QueryFingerprint"/> instances represent the same underlying SQL query,
+    /// regardless of the call site.
     /// </summary>
-    public static class QueryFingerprintExtensions
+    /// <param name="fingerprint">The first fingerprint.</param>
+    /// <param name="other">The second fingerprint.</param>
+    /// <returns><c>true</c> if both fingerprints have the same SQL hash; otherwise, <c>false</c>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="fingerprint"/> or <paramref name="other"/> is null.</exception>
+    public static bool IsEquivalentSql(this QueryFingerprint fingerprint, QueryFingerprint other)
     {
-        /// <summary>
-        /// Checks if two <see cref="QueryFingerprint"/> instances represent the same underlying SQL query,
-        /// regardless of the call site.
-        /// </summary>
-        /// <param name="fingerprint">The first fingerprint.</param>
-        /// <param name="other">The second fingerprint.</param>
-        /// <returns><c>true</c> if both fingerprints have the same SQL hash; otherwise, <c>false</c>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="fingerprint"/> or <paramref name="other"/> is null.</exception>
-        public static bool IsEquivalentSql(this QueryFingerprint fingerprint, QueryFingerprint other)
-        {
-            ArgumentNullException.ThrowIfNull(fingerprint);
-            ArgumentNullException.ThrowIfNull(other);
+        ArgumentNullException.ThrowIfNull(fingerprint);
+        ArgumentNullException.ThrowIfNull(other);
 
-            return fingerprint.CommandTextHash == other.CommandTextHash;
-        }
+        return fingerprint.CommandTextHash == other.CommandTextHash;
+    }
 
-        /// <summary>
-        /// Returns a formatted string representation of the fingerprint for logging purposes.
-        /// </summary>
-        /// <param name="fingerprint">The fingerprint.</param>
-        /// <returns>A string containing the shortened hash and the call site.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="fingerprint"/> is null.</exception>
-        public static string ToLogString(this QueryFingerprint fingerprint)
-        {
-            ArgumentNullException.ThrowIfNull(fingerprint);
+    /// <summary>
+    /// Returns a formatted string representation of the fingerprint for logging purposes.
+    /// </summary>
+    /// <param name="fingerprint">The fingerprint.</param>
+    /// <returns>A string containing the shortened hash and the call site.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="fingerprint"/> is null.</exception>
+    public static string ToLogString(this QueryFingerprint fingerprint)
+    {
+        ArgumentNullException.ThrowIfNull(fingerprint);
 
-            // Using the first 8 characters of the hash for identification.
-            var hashPrefix = fingerprint.CommandTextHash.Length >= 8
-                ? fingerprint.CommandTextHash.Substring(0, 8)
-                : fingerprint.CommandTextHash;
+        // Using the first 8 characters of the hash for identification.
+        var hashPrefix = fingerprint.CommandTextHash.Length >= 8
+            ? fingerprint.CommandTextHash.Substring(0, 8)
+            : fingerprint.CommandTextHash;
 
-            return $"Query({hashPrefix}) at {fingerprint.CallSite}";
-        }
+        return $"Query({hashPrefix}) at {fingerprint.CallSite}";
     }
 }

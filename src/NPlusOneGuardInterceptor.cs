@@ -1,7 +1,7 @@
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
 using System.Data.Common;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace EfCoreNPlusOneGuard;
 
@@ -14,7 +14,7 @@ namespace EfCoreNPlusOneGuard;
 ///     .SetDetectThreshold(2)
 ///     .SetMinDurationToReporting);
 ///
-/// var optionsBuilder = new DbContextOptionsBuilder<MyDbContext>();
+/// var optionsBuilder = new DbContextOptionsBuilder&lt;MyDbContext&gt;();
 /// optionsBuilder
 ///     .UseSqlServer(connectionString)
 ///     .AddInterceptors(new NPlusOneGuardInterceptor(options, incident =>

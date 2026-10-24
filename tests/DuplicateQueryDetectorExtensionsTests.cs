@@ -1,6 +1,6 @@
-using Xunit;
-using EfCoreNPlusOneGuard;
 using System;
+using EfCoreNPlusOneGuard;
+using Xunit;
 
 namespace EfCoreNPlusOneGuard;
 
@@ -21,7 +21,7 @@ public class DuplicateQueryDetectorExtensionsTests
     public void Record_NullDetector_ThrowsArgumentNullException()
     {
         // Arrange
-        DuplicateQueryDetector? detector = null;
+        DuplicateQueryDetector detector = null!;
         var sql = "SELECT * FROM table";
 
         // Act and Assert
@@ -33,7 +33,7 @@ public class DuplicateQueryDetectorExtensionsTests
     {
         // Arrange
         var detector = new DuplicateQueryDetector();
-        string? sql = null;
+        string sql = null!;
 
         // Act and Assert
         Assert.Throws<ArgumentNullException>(() => detector.Record(sql));
@@ -93,7 +93,7 @@ public class DuplicateQueryDetectorExtensionsTests
     public void GetTotalDuplicateCount_NullDetector_ThrowsArgumentNullException()
     {
         // Arrange
-        DuplicateQueryDetector? detector = null;
+        DuplicateQueryDetector detector = null!;
 
         // Act and Assert
         Assert.Throws<ArgumentNullException>(() => detector.GetTotalDuplicateCount());

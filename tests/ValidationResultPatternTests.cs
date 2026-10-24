@@ -1,8 +1,8 @@
 using System;
 using Xunit;
 
-namespace EfCoreNPlusOneGuard.Tests
-{
+namespace EfCoreNPlusOneGuard.Tests;
+
 	public class ValidationResultPatternTests
 	{
 		[Fact]
@@ -163,4 +163,3 @@ namespace EfCoreNPlusOneGuard.Tests
 			Assert.True(result.IsValid);
 		}
 	}
-}

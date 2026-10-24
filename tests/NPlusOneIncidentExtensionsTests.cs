@@ -56,7 +56,7 @@ public class NPlusOneIncidentExtensionsTests
         // Assert
         Assert.Equal(2, result.Count);
         Assert.Equal(2, result["SELECT * FROM Table1"].Count);
-        Assert.Equal(1, result["SELECT * FROM Table2"].Count);
+        Assert.Single(result["SELECT * FROM Table2"]);
     }
 
     [Fact]
@@ -112,6 +112,7 @@ public class NPlusOneIncidentExtensionsTests
         var result = NPlusOneIncidentExtensions.GetMostSevere(incidents);
 
         // Assert
+        Assert.NotNull(result);
         Assert.Equal(NPlusOneSeverity.High, result.Severity);
     }
 

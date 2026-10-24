@@ -60,10 +60,7 @@ public sealed class GitHubAnnotationReporter : IIncidentReporter
             messageBuilder.Append($" | Query: {Truncate(incident.SqlQuery, 100)}");
         }
 
-        if (incident.Severity != null)
-        {
-            messageBuilder.Append($" | Severity: {incident.Severity}");
-        }
+        messageBuilder.Append($" | Severity: {incident.Severity}");
 
         var baseMessage = messageBuilder.ToString();
 

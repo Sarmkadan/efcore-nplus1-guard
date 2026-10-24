@@ -5,161 +5,160 @@ using System.Reflection;
 using EfCoreNPlusOneGuard;
 using Xunit;
 
-namespace EfCoreNPlusOneGuard.Tests
+namespace EfCoreNPlusOneGuard.Tests;
+
+public class CallSiteWhitelistValidationTests
 {
-    public class CallSiteWhitelistValidationTests
+    private static CallSiteWhitelist CreateValidWhitelist()
     {
-        private static CallSiteWhitelist CreateValidWhitelist()
-        {
-            var whitelist = new CallSiteWhitelist();
-            whitelist.Add("MyNamespace.MyClass", "MyMethod");
-            whitelist.AddPattern("MyNamespace.*");
-            whitelist.AddFingerprint("deadbeef");
-            return whitelist;
-        }
+        var whitelist = new CallSiteWhitelist();
+        whitelist.Add("MyNamespace.MyClass", "MyMethod");
+        whitelist.AddPattern("MyNamespace.*");
+        whitelist.AddFingerprint("deadbeef");
+        return whitelist;
+    }
 
-        [Fact]
-        public void Validate_HappyPath_ReturnsEmpty()
-        {
-            // Arrange
-            var whitelist = CreateValidWhitelist();
+    [Fact]
+    public void Validate_HappyPath_ReturnsEmpty()
+    {
+        // Arrange
+        var whitelist = CreateValidWhitelist();
 
-            // Act
-            var problems = whitelist.Validate();
+        // Act
+        var problems = whitelist.Validate();
 
-            // Assert
-            Assert.Empty(problems);
-        }
+        // Assert
+        Assert.Empty(problems);
+    }
 
-        [Fact]
-        public void IsValid_HappyPath_ReturnsTrue()
-        {
-            // Arrange
-            var whitelist = CreateValidWhitelist();
+    [Fact]
+    public void IsValid_HappyPath_ReturnsTrue()
+    {
+        // Arrange
+        var whitelist = CreateValidWhitelist();
 
-            // Act
-            var isValid = whitelist.IsValid();
+        // Act
+        var isValid = whitelist.IsValid();
 
-            // Assert
-            Assert.True(isValid);
-        }
+        // Assert
+        Assert.True(isValid);
+    }
 
-        [Fact]
-        public void EnsureValid_HappyPath_DoesNotThrow()
-        {
-            // Arrange
-            var whitelist = CreateValidWhitelist();
+    [Fact]
+    public void EnsureValid_HappyPath_DoesNotThrow()
+    {
+        // Arrange
+        var whitelist = CreateValidWhitelist();
 
-            // Act / Assert
-            var exception = Record.Exception(() => whitelist.EnsureValid());
-            Assert.Null(exception);
-        }
+        // Act / Assert
+        var exception = Record.Exception(() => whitelist.EnsureValid());
+        Assert.Null(exception);
+    }
 
-        [Fact]
-        public void Validate_DetectsInvalidExactEntry()
-        {
-            // Arrange
-            var whitelist = new CallSiteWhitelist();
-            whitelist.Add("Valid.Type", "ValidMethod");
+    [Fact]
+    public void Validate_DetectsInvalidExactEntry()
+    {
+        // Arrange
+        var whitelist = new CallSiteWhitelist();
+        whitelist.Add("Valid.Type", "ValidMethod");
 
-            // Corrupt the ExactEntry's TypeName to whitespace via reflection
-            var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
-                BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
-            var exactEntry = entries[0];
-            var typeNameField = exactEntry.GetType().GetField("<TypeName>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            typeNameField.SetValue(exactEntry, "   ");
+        // Corrupt the ExactEntry's TypeName to whitespace via reflection
+        var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
+        var exactEntry = entries[0]!;
+        var typeNameField = exactEntry.GetType().GetField("<TypeName>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        typeNameField.SetValue(exactEntry, "   ");
 
-            // Act
-            var problems = whitelist.Validate();
+        // Act
+        var problems = whitelist.Validate();
 
-            // Assert
-            Assert.Contains(problems, p => p.Contains("ExactEntry") && p.Contains("TypeName"));
-        }
+        // Assert
+        Assert.Contains(problems, p => p.Contains("ExactEntry") && p.Contains("TypeName"));
+    }
 
-        [Fact]
-        public void Validate_DetectsInvalidPatternEntry()
-        {
-            // Arrange
-            var whitelist = new CallSiteWhitelist();
-            whitelist.AddPattern("ValidPattern*");
+    [Fact]
+    public void Validate_DetectsInvalidPatternEntry()
+    {
+        // Arrange
+        var whitelist = new CallSiteWhitelist();
+        whitelist.AddPattern("ValidPattern*");
 
-            // Corrupt the PatternEntry's Pattern to null via reflection
-            var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
-                BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
-            var patternEntry = entries[0];
-            var patternField = patternEntry.GetType().GetField("<Pattern>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            patternField.SetValue(patternEntry, null);
+        // Corrupt the PatternEntry's Pattern to null via reflection
+        var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
+        var patternEntry = entries[0]!;
+        var patternField = patternEntry.GetType().GetField("<Pattern>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        patternField.SetValue(patternEntry, null);
 
-            // Act
-            var problems = whitelist.Validate();
+        // Act
+        var problems = whitelist.Validate();
 
-            // Assert
-            Assert.Contains(problems, p => p.Contains("PatternEntry") && p.Contains("Pattern"));
-        }
+        // Assert
+        Assert.Contains(problems, p => p.Contains("PatternEntry") && p.Contains("Pattern"));
+    }
 
-        [Fact]
-        public void Validate_DetectsInvalidFingerprintEntry()
-        {
-            // Arrange
-            var whitelist = new CallSiteWhitelist();
-            whitelist.AddFingerprint("validhash");
+    [Fact]
+    public void Validate_DetectsInvalidFingerprintEntry()
+    {
+        // Arrange
+        var whitelist = new CallSiteWhitelist();
+        whitelist.AddFingerprint("validhash");
 
-            // Corrupt the FingerprintEntry's FingerprintHash to whitespace via reflection
-            var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
-                BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
-            var fingerprintEntry = entries[0];
-            var hashField = fingerprintEntry.GetType().GetField("<FingerprintHash>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            hashField.SetValue(fingerprintEntry, "");
+        // Corrupt the FingerprintEntry's FingerprintHash to whitespace via reflection
+        var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
+        var fingerprintEntry = entries[0]!;
+        var hashField = fingerprintEntry.GetType().GetField("<FingerprintHash>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        hashField.SetValue(fingerprintEntry, "");
 
-            // Act
-            var problems = whitelist.Validate();
+        // Act
+        var problems = whitelist.Validate();
 
-            // Assert
-            Assert.Contains(problems, p => p.Contains("FingerprintEntry") && p.Contains("FingerprintHash"));
-        }
+        // Assert
+        Assert.Contains(problems, p => p.Contains("FingerprintEntry") && p.Contains("FingerprintHash"));
+    }
 
-        [Fact]
-        public void EnsureValid_Invalid_ThrowsArgumentException()
-        {
-            // Arrange
-            var whitelist = new CallSiteWhitelist();
-            whitelist.Add("Only.Type");
+    [Fact]
+    public void EnsureValid_Invalid_ThrowsArgumentException()
+    {
+        // Arrange
+        var whitelist = new CallSiteWhitelist();
+        whitelist.Add("Only.Type");
 
-            // Corrupt the entry
-            var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
-                BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
-            var exactEntry = entries[0];
-            var typeNameField = exactEntry.GetType().GetField("<TypeName>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            typeNameField.SetValue(exactEntry, null);
+        // Corrupt the entry
+        var entriesField = typeof(CallSiteWhitelist).GetField("_entries",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var entries = (System.Collections.IList)entriesField.GetValue(whitelist)!;
+        var exactEntry = entries[0]!;
+        var typeNameField = exactEntry.GetType().GetField("<TypeName>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        typeNameField.SetValue(exactEntry, null);
 
-            // Act & Assert
-            var ex = Assert.Throws<ArgumentException>(() => whitelist.EnsureValid());
-            Assert.Contains("CallSiteWhitelist is invalid", ex.Message);
-        }
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => whitelist.EnsureValid());
+        Assert.Contains("CallSiteWhitelist is invalid", ex.Message);
+    }
 
-        [Fact]
-        public void Validate_NullWhitelist_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => CallSiteWhitelistValidation.Validate(null!));
-        }
+    [Fact]
+    public void Validate_NullWhitelist_ThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => CallSiteWhitelistValidation.Validate(null!));
+    }
 
-        [Fact]
-        public void IsValid_NullWhitelist_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => CallSiteWhitelistValidation.IsValid(null!));
-        }
+    [Fact]
+    public void IsValid_NullWhitelist_ThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => CallSiteWhitelistValidation.IsValid(null!));
+    }
 
-        [Fact]
-        public void EnsureValid_NullWhitelist_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => CallSiteWhitelistValidation.EnsureValid(null!));
-        }
+    [Fact]
+    public void EnsureValid_NullWhitelist_ThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => CallSiteWhitelistValidation.EnsureValid(null!));
     }
 }

@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace EfCoreNPlusOneGuard;
@@ -105,7 +105,7 @@ public sealed class QueryTracker
     /// <returns>The formatted call site or null.</returns>
     private string? ExtractCallSite(int maxStackFrames)
     {
-        if (!_options.CaptureCallSite)
+        if (_options.CaptureCallSites == CaptureCallSiteMode.Never)
         {
             return null;
         }

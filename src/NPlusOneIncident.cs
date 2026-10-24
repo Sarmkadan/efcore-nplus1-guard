@@ -55,5 +55,10 @@ public class NPlusOneIncident
 /// </summary>
 public string? CallSite { get; set; }
 
+    /// <summary>
+    /// Returns a string representation of the incident containing its SQL, count, severity,
+    /// stack trace and call site.
+    /// </summary>
+    /// <returns>A human-readable description of this incident.</returns>
     public override string ToString() => $"NPlusOneIncident {{ SqlQuery = {SqlQuery}, Count = {Count}, Severity = {Severity}, StackTrace = {StackTrace}, CallSite = {CallSite} }}";
 }
