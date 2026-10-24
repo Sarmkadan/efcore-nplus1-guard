@@ -441,3 +441,7 @@ if (duplicates.Count > 0)
 // Reset the detector for the next request
 detector.Clear();
 ```
+
+## License
+
+Released under the [MIT License](LICENSE).
